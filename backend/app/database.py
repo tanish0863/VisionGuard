@@ -117,20 +117,29 @@ class RunDatabase:
             )
 
     def complete_run(
-        self, run_id: str, report: dict[str, Any], finished_at: str
+        self,
+        run_id: str,
+        report: dict[str, Any],
+        status: str,
+        finished_at: str,
+        error_message: str | None = None,
     ) -> None:
+        if status not in {"COMPLETED", "PARTIAL", "FAILED"}:
+            raise ValueError(f"Invalid terminal run status: {status}")
         report_json = json.dumps(report, allow_nan=False)
         with self.connection() as connection:
+            cursor = connection.execute(
+                """
+                UPDATE runs SET status = ?, finished_at = ?, error_message = ?
+                WHERE run_id = ? AND status = 'RUNNING'
+                """,
+                (status, finished_at, error_message, run_id),
+            )
+            if cursor.rowcount != 1:
+                raise ValueError(f"Run '{run_id}' is not in RUNNING status")
             connection.execute(
                 "INSERT INTO reports (run_id, report_json, created_at) VALUES (?, ?, ?)",
                 (run_id, report_json, finished_at),
-            )
-            connection.execute(
-                """
-                UPDATE runs SET status = 'COMPLETED', finished_at = ?
-                WHERE run_id = ? AND status = 'RUNNING'
-                """,
-                (finished_at, run_id),
             )
 
     def fail_run(self, run_id: str, message: str, finished_at: str) -> None:

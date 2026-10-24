@@ -1,31 +1,12 @@
 from datetime import datetime
-from enum import Enum
-from typing import Any
 
-from pydantic import BaseModel, ConfigDict, Field, field_validator
+from pydantic import BaseModel
 
-
-class RunStatus(str, Enum):
-    QUEUED = "QUEUED"
-    RUNNING = "RUNNING"
-    COMPLETED = "COMPLETED"
-    FAILED = "FAILED"
+from backend.app.contracts import EvalConfig, EvaluationReport, RunStatus
 
 
-class RunCreateRequest(BaseModel):
-    model_config = ConfigDict(extra="forbid", allow_inf_nan=False)
-
-    model_id: str = Field(min_length=1, max_length=100)
-    dataset_id: str = Field(min_length=1, max_length=100)
-    parameters: dict[str, Any] = Field(default_factory=dict)
-
-    @field_validator("model_id", "dataset_id")
-    @classmethod
-    def strip_identifiers(cls, value: str) -> str:
-        value = value.strip()
-        if not value:
-            raise ValueError("must not be blank")
-        return value
+class RunCreateRequest(EvalConfig):
+    pass
 
 
 class RunResponse(BaseModel):
@@ -53,4 +34,4 @@ class ModelsResponse(BaseModel):
 class ReportResponse(BaseModel):
     run_id: str
     created_at: datetime
-    report: dict[str, Any]
+    report: EvaluationReport

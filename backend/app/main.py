@@ -4,12 +4,13 @@ import logging
 import os
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import Any, Callable
+from typing import Callable
 from uuid import uuid4
 
 from fastapi import BackgroundTasks, FastAPI, HTTPException, Query
 
 from backend.app.database import RunDatabase
+from backend.app.contracts import EvalConfig, EvaluationReport
 from backend.app.evaluation_adapter import get_evaluator
 from backend.app.schemas import (
     ModelsResponse,
@@ -40,7 +41,7 @@ def configured_models() -> list[str]:
 
 def create_app(
     database_path: Path | str = DEFAULT_DATABASE_PATH,
-    evaluator: Callable[[dict[str, Any]], Any] | None = None,
+    evaluator: Callable[..., EvaluationReport] | None = None,
     supported_models: list[str] | None = None,
 ) -> FastAPI:
     database = RunDatabase(Path(database_path))
@@ -53,24 +54,36 @@ def create_app(
     application.state.database = database
     application.state.supported_models = models
 
-    def execute_run(run_id: str, config: dict[str, Any]) -> None:
+    def execute_run(run_id: str, config: EvalConfig) -> None:
         database.start_run(run_id, utc_now())
         try:
             evaluator_function = evaluator if evaluator is not None else get_evaluator()
-            result = evaluator_function(config)
-            if not isinstance(result, dict):
-                raise TypeError("evaluate_run(config) must return a JSON object")
-            report_json = json.dumps(result, allow_nan=False)
-            report = json.loads(report_json)
-        except Exception as error:
+            result = evaluator_function(config, run_id=run_id)
+            report = EvaluationReport.model_validate(result)
+            if report.run_id != run_id:
+                raise ValueError("Evaluator report run_id does not match the requested run")
+            report_json = json.loads(report.model_dump_json())
+        except Exception:
             logger.exception("Evaluation run %s failed", run_id)
             database.fail_run(
                 run_id,
-                f"Evaluation failed ({type(error).__name__})",
+                "Evaluation failed before a valid report was produced",
                 utc_now(),
             )
             return
-        database.complete_run(run_id, report, utc_now())
+        status = report.status.value
+        error_message = (
+            f"Evaluation returned a {status} report; see the report for details"
+            if status in {"PARTIAL", "FAILED"}
+            else None
+        )
+        database.complete_run(
+            run_id,
+            report_json,
+            status,
+            utc_now(),
+            error_message,
+        )
 
     @application.get("/")
     def home() -> dict[str, str]:
@@ -99,7 +112,7 @@ def create_app(
 
         run_id = str(uuid4())
         created_at = utc_now()
-        config = request.model_dump()
+        config = request.model_dump(mode="json")
         database.create_run(
             {
                 "run_id": run_id,
@@ -110,7 +123,7 @@ def create_app(
                 "created_at": created_at,
             }
         )
-        background_tasks.add_task(execute_run, run_id, config)
+        background_tasks.add_task(execute_run, run_id, request)
         return RunResponse(
             run_id=run_id,
             status=RunStatus.QUEUED,

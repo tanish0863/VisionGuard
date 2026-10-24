@@ -1,0 +1,22 @@
+{
+  "model_id": "fasterrcnn_resnet50_fpn",
+  "dataset_id": "visionguard_demo",
+  "corruptions": [
+    {
+      "kind": "blur",
+      "severities": [
+        2
+      ]
+    },
+    {
+      "kind": "low_light",
+      "severities": [
+        2
+      ]
+    }
+  ],
+  "seed": 42,
+  "score_threshold": 0.5,
+  "match_iou_threshold": 0.5,
+  "max_images": null
+}

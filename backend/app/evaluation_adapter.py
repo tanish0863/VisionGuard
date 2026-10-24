@@ -1,11 +1,14 @@
 import importlib
 import os
 from collections.abc import Callable
-from typing import Any
+
+from backend.app.contracts import EvaluationReport
 
 
-def get_evaluator() -> Callable[[dict[str, Any]], Any]:
-    target = os.getenv("VISIONGUARD_EVALUATOR", "ml.evaluation:evaluate_run")
+def get_evaluator() -> Callable[..., EvaluationReport]:
+    target = os.getenv(
+        "VISIONGUARD_EVALUATOR", "visionguard.core.api:evaluate_run"
+    )
     module_name, separator, function_name = target.partition(":")
     if not separator or not module_name or not function_name:
         raise RuntimeError(
