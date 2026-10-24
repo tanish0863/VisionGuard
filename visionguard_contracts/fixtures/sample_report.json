@@ -1,0 +1,538 @@
+{
+  "schema_version": "1.0.0",
+  "is_fixture": true,
+  "run_id": "fixture-0001",
+  "status": "COMPLETED",
+  "created_at": "2026-10-24T00:00:00Z",
+  "model": {
+    "model_id": "fasterrcnn_resnet50_fpn",
+    "name": "Faster R-CNN ResNet50 FPN (placeholder)",
+    "framework": "torchvision",
+    "weights": "FIXTURE - not a real run",
+    "weights_license": "n/a",
+    "weights_sha256": null
+  },
+  "dataset": {
+    "dataset_id": "visionguard_demo",
+    "name": "VisionGuard Demo (fixture)",
+    "image_count": 2,
+    "has_ground_truth": false,
+    "license": null
+  },
+  "config": {
+    "model_id": "fasterrcnn_resnet50_fpn",
+    "dataset_id": "visionguard_demo",
+    "corruptions": [
+      {
+        "kind": "blur",
+        "severities": [
+          2
+        ]
+      },
+      {
+        "kind": "low_light",
+        "severities": [
+          2
+        ]
+      }
+    ],
+    "seed": 42,
+    "score_threshold": 0.5,
+    "match_iou_threshold": 0.5,
+    "max_images": null
+  },
+  "clean_predictions": [
+    {
+      "image_id": "image_001",
+      "width": 640,
+      "height": 480,
+      "image_path": "fixture_assets/clean/image_001.jpg",
+      "predictions": [
+        {
+          "class_id": 0,
+          "class_name": "person",
+          "confidence": 0.94,
+          "bbox_xyxy": [
+            100.0,
+            80.0,
+            300.0,
+            400.0
+          ]
+        },
+        {
+          "class_id": 16,
+          "class_name": "dog",
+          "confidence": 0.88,
+          "bbox_xyxy": [
+            320.0,
+            200.0,
+            520.0,
+            420.0
+          ]
+        },
+        {
+          "class_id": 2,
+          "class_name": "car",
+          "confidence": 0.76,
+          "bbox_xyxy": [
+            10.0,
+            300.0,
+            120.0,
+            380.0
+          ]
+        }
+      ]
+    },
+    {
+      "image_id": "image_002",
+      "width": 640,
+      "height": 480,
+      "image_path": "fixture_assets/clean/image_002.jpg",
+      "predictions": [
+        {
+          "class_id": 2,
+          "class_name": "car",
+          "confidence": 0.91,
+          "bbox_xyxy": [
+            50.0,
+            120.0,
+            400.0,
+            380.0
+          ]
+        },
+        {
+          "class_id": 0,
+          "class_name": "person",
+          "confidence": 0.67,
+          "bbox_xyxy": [
+            420.0,
+            100.0,
+            520.0,
+            360.0
+          ]
+        }
+      ]
+    }
+  ],
+  "conditions": [
+    {
+      "corruption": "blur",
+      "severity": 2,
+      "seed": 42,
+      "metrics": {
+        "n_clean": 5,
+        "n_corrupted": 4,
+        "n_matched": 3,
+        "n_class_flips": 1,
+        "n_unmatched_clean": 2,
+        "n_unmatched_corrupted": 1,
+        "detection_retention": 0.6,
+        "class_consistent_retention": 0.4,
+        "mean_matched_iou": 0.9411,
+        "mean_confidence_delta": -0.1433,
+        "class_flip_rate": 0.3333,
+        "unavailable": {}
+      },
+      "per_image": [
+        {
+          "image_id": "image_001",
+          "corrupted_image_path": "fixture_assets/blur_s2/image_001.jpg",
+          "predictions": [
+            {
+              "class_id": 0,
+              "class_name": "person",
+              "confidence": 0.9,
+              "bbox_xyxy": [
+                104.0,
+                84.0,
+                298.0,
+                396.0
+              ]
+            },
+            {
+              "class_id": 15,
+              "class_name": "cat",
+              "confidence": 0.55,
+              "bbox_xyxy": [
+                322.0,
+                204.0,
+                516.0,
+                418.0
+              ]
+            }
+          ],
+          "matches": [
+            {
+              "clean_index": 0,
+              "corrupted_index": 0,
+              "iou": 0.9457,
+              "confidence_delta": -0.04,
+              "class_flip": false
+            },
+            {
+              "clean_index": 1,
+              "corrupted_index": 1,
+              "iou": 0.9435,
+              "confidence_delta": -0.33,
+              "class_flip": true
+            }
+          ],
+          "unmatched_clean_indices": [
+            2
+          ],
+          "unmatched_corrupted_indices": [],
+          "metrics": {
+            "n_clean": 3,
+            "n_corrupted": 2,
+            "n_matched": 2,
+            "n_class_flips": 1,
+            "n_unmatched_clean": 1,
+            "n_unmatched_corrupted": 0,
+            "detection_retention": 0.6667,
+            "class_consistent_retention": 0.3333,
+            "mean_matched_iou": 0.9446,
+            "mean_confidence_delta": -0.185,
+            "class_flip_rate": 0.5,
+            "unavailable": {}
+          }
+        },
+        {
+          "image_id": "image_002",
+          "corrupted_image_path": "fixture_assets/blur_s2/image_002.jpg",
+          "predictions": [
+            {
+              "class_id": 2,
+              "class_name": "car",
+              "confidence": 0.85,
+              "bbox_xyxy": [
+                55.0,
+                126.0,
+                395.0,
+                376.0
+              ]
+            },
+            {
+              "class_id": 56,
+              "class_name": "chair",
+              "confidence": 0.52,
+              "bbox_xyxy": [
+                450.0,
+                200.0,
+                560.0,
+                400.0
+              ]
+            }
+          ],
+          "matches": [
+            {
+              "clean_index": 0,
+              "corrupted_index": 0,
+              "iou": 0.9341,
+              "confidence_delta": -0.06,
+              "class_flip": false
+            }
+          ],
+          "unmatched_clean_indices": [
+            1
+          ],
+          "unmatched_corrupted_indices": [
+            1
+          ],
+          "metrics": {
+            "n_clean": 2,
+            "n_corrupted": 2,
+            "n_matched": 1,
+            "n_class_flips": 0,
+            "n_unmatched_clean": 1,
+            "n_unmatched_corrupted": 1,
+            "detection_retention": 0.5,
+            "class_consistent_retention": 0.5,
+            "mean_matched_iou": 0.9341,
+            "mean_confidence_delta": -0.06,
+            "class_flip_rate": 0.0,
+            "unavailable": {}
+          }
+        }
+      ]
+    },
+    {
+      "corruption": "low_light",
+      "severity": 2,
+      "seed": 42,
+      "metrics": {
+        "n_clean": 5,
+        "n_corrupted": 5,
+        "n_matched": 5,
+        "n_class_flips": 0,
+        "n_unmatched_clean": 0,
+        "n_unmatched_corrupted": 0,
+        "detection_retention": 1.0,
+        "class_consistent_retention": 1.0,
+        "mean_matched_iou": 0.9386,
+        "mean_confidence_delta": -0.134,
+        "class_flip_rate": 0.0,
+        "unavailable": {}
+      },
+      "per_image": [
+        {
+          "image_id": "image_001",
+          "corrupted_image_path": "fixture_assets/low_light_s2/image_001.jpg",
+          "predictions": [
+            {
+              "class_id": 0,
+              "class_name": "person",
+              "confidence": 0.86,
+              "bbox_xyxy": [
+                102.0,
+                82.0,
+                301.0,
+                402.0
+              ]
+            },
+            {
+              "class_id": 16,
+              "class_name": "dog",
+              "confidence": 0.71,
+              "bbox_xyxy": [
+                318.0,
+                198.0,
+                524.0,
+                424.0
+              ]
+            },
+            {
+              "class_id": 2,
+              "class_name": "car",
+              "confidence": 0.58,
+              "bbox_xyxy": [
+                12.0,
+                302.0,
+                118.0,
+                382.0
+              ]
+            }
+          ],
+          "matches": [
+            {
+              "clean_index": 0,
+              "corrupted_index": 0,
+              "iou": 0.9729,
+              "confidence_delta": -0.08,
+              "class_flip": false
+            },
+            {
+              "clean_index": 1,
+              "corrupted_index": 1,
+              "iou": 0.9451,
+              "confidence_delta": -0.17,
+              "class_flip": false
+            },
+            {
+              "clean_index": 2,
+              "corrupted_index": 2,
+              "iou": 0.9174,
+              "confidence_delta": -0.18,
+              "class_flip": false
+            }
+          ],
+          "unmatched_clean_indices": [],
+          "unmatched_corrupted_indices": [],
+          "metrics": {
+            "n_clean": 3,
+            "n_corrupted": 3,
+            "n_matched": 3,
+            "n_class_flips": 0,
+            "n_unmatched_clean": 0,
+            "n_unmatched_corrupted": 0,
+            "detection_retention": 1.0,
+            "class_consistent_retention": 1.0,
+            "mean_matched_iou": 0.9451,
+            "mean_confidence_delta": -0.1433,
+            "class_flip_rate": 0.0,
+            "unavailable": {}
+          }
+        },
+        {
+          "image_id": "image_002",
+          "corrupted_image_path": "fixture_assets/low_light_s2/image_002.jpg",
+          "predictions": [
+            {
+              "class_id": 2,
+              "class_name": "car",
+              "confidence": 0.8,
+              "bbox_xyxy": [
+                52.0,
+                124.0,
+                398.0,
+                378.0
+              ]
+            },
+            {
+              "class_id": 0,
+              "class_name": "person",
+              "confidence": 0.54,
+              "bbox_xyxy": [
+                424.0,
+                104.0,
+                516.0,
+                356.0
+              ]
+            }
+          ],
+          "matches": [
+            {
+              "clean_index": 0,
+              "corrupted_index": 0,
+              "iou": 0.9658,
+              "confidence_delta": -0.11,
+              "class_flip": false
+            },
+            {
+              "clean_index": 1,
+              "corrupted_index": 1,
+              "iou": 0.8917,
+              "confidence_delta": -0.13,
+              "class_flip": false
+            }
+          ],
+          "unmatched_clean_indices": [],
+          "unmatched_corrupted_indices": [],
+          "metrics": {
+            "n_clean": 2,
+            "n_corrupted": 2,
+            "n_matched": 2,
+            "n_class_flips": 0,
+            "n_unmatched_clean": 0,
+            "n_unmatched_corrupted": 0,
+            "detection_retention": 1.0,
+            "class_consistent_retention": 1.0,
+            "mean_matched_iou": 0.9287,
+            "mean_confidence_delta": -0.12,
+            "class_flip_rate": 0.0,
+            "unavailable": {}
+          }
+        }
+      ]
+    }
+  ],
+  "failures": [
+    {
+      "image_id": "image_001",
+      "corruption": "blur",
+      "severity": 2,
+      "failure_type": "CLASS_FLIP",
+      "clean_index": 1,
+      "corrupted_index": 1,
+      "clean_prediction": {
+        "class_id": 16,
+        "class_name": "dog",
+        "confidence": 0.88,
+        "bbox_xyxy": [
+          320.0,
+          200.0,
+          520.0,
+          420.0
+        ]
+      },
+      "corrupted_prediction": {
+        "class_id": 15,
+        "class_name": "cat",
+        "confidence": 0.55,
+        "bbox_xyxy": [
+          322.0,
+          204.0,
+          516.0,
+          418.0
+        ]
+      },
+      "iou": 0.9435,
+      "details": "dog became cat (IoU 0.94)"
+    },
+    {
+      "image_id": "image_001",
+      "corruption": "blur",
+      "severity": 2,
+      "failure_type": "MISSING_AFTER_CORRUPTION",
+      "clean_index": 2,
+      "corrupted_index": null,
+      "clean_prediction": {
+        "class_id": 2,
+        "class_name": "car",
+        "confidence": 0.76,
+        "bbox_xyxy": [
+          10.0,
+          300.0,
+          120.0,
+          380.0
+        ]
+      },
+      "corrupted_prediction": null,
+      "iou": null,
+      "details": "clean car has no match"
+    },
+    {
+      "image_id": "image_002",
+      "corruption": "blur",
+      "severity": 2,
+      "failure_type": "MISSING_AFTER_CORRUPTION",
+      "clean_index": 1,
+      "corrupted_index": null,
+      "clean_prediction": {
+        "class_id": 0,
+        "class_name": "person",
+        "confidence": 0.67,
+        "bbox_xyxy": [
+          420.0,
+          100.0,
+          520.0,
+          360.0
+        ]
+      },
+      "corrupted_prediction": null,
+      "iou": null,
+      "details": "clean person has no match"
+    },
+    {
+      "image_id": "image_002",
+      "corruption": "blur",
+      "severity": 2,
+      "failure_type": "NEW_AFTER_CORRUPTION",
+      "clean_index": null,
+      "corrupted_index": 1,
+      "clean_prediction": null,
+      "corrupted_prediction": {
+        "class_id": 56,
+        "class_name": "chair",
+        "confidence": 0.52,
+        "bbox_xyxy": [
+          450.0,
+          200.0,
+          560.0,
+          400.0
+        ]
+      },
+      "iou": null,
+      "details": "corrupted chair has no clean counterpart"
+    }
+  ],
+  "errors": [],
+  "ground_truth_metrics": null,
+  "software_versions": {
+    "note": "fixture data, not produced by a real run"
+  },
+  "metric_definitions": {
+    "detection_retention": "Matched clean detections / clean detections. A clean detection is retained if it is matched one-to-one to a corrupted detection with IoU >= match_iou_threshold, regardless of class. Measures prediction consistency, not accuracy.",
+    "class_consistent_retention": "Matched pairs with the SAME class / clean detections. Stricter than detection_retention.",
+    "mean_matched_iou": "Mean IoU over matched pairs. Shows how far boxes move under corruption.",
+    "mean_confidence_delta": "Mean of (corrupted confidence - clean confidence) over matched pairs. Negative = less confident. Confidence is not correctness.",
+    "class_flip_rate": "Matched pairs whose class changed / matched pairs.",
+    "unmatched": "Detections with no counterpart in the other run. NOT automatically false positives or false negatives: no ground truth is used."
+  },
+  "limitations": [
+    "Metrics measure prediction consistency under controlled corruption, not ground-truth accuracy.",
+    "Precision, recall, F1 and mAP are not reported unless the dataset has valid ground-truth labels.",
+    "Only the listed corruptions and severities were tested; this does not prove general robustness.",
+    "Results depend on the detector, weights, score threshold and matching threshold recorded in this report.",
+    "Condition-level metrics pool all matches across images (micro-average), not an average of per-image ratios."
+  ]
+}
