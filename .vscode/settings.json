@@ -1,0 +1,4 @@
+{
+  "python.analysis.extraPaths": ["./visionguard_contracts"],
+  "python.analysis.useNearestConfiguration": true
+}

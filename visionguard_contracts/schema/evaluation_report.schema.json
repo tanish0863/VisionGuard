@@ -1,0 +1,808 @@
+{
+  "$defs": {
+    "ConditionResult": {
+      "additionalProperties": false,
+      "properties": {
+        "corruption": {
+          "$ref": "#/$defs/CorruptionKind"
+        },
+        "severity": {
+          "title": "Severity",
+          "type": "integer"
+        },
+        "seed": {
+          "title": "Seed",
+          "type": "integer"
+        },
+        "metrics": {
+          "$ref": "#/$defs/MetricSet"
+        },
+        "per_image": {
+          "items": {
+            "$ref": "#/$defs/ImageConditionResult"
+          },
+          "title": "Per Image",
+          "type": "array"
+        }
+      },
+      "required": [
+        "corruption",
+        "severity",
+        "seed",
+        "metrics",
+        "per_image"
+      ],
+      "title": "ConditionResult",
+      "type": "object"
+    },
+    "CorruptionKind": {
+      "enum": [
+        "blur",
+        "low_light",
+        "gaussian_noise"
+      ],
+      "title": "CorruptionKind",
+      "type": "string"
+    },
+    "CorruptionSpec": {
+      "additionalProperties": false,
+      "properties": {
+        "kind": {
+          "$ref": "#/$defs/CorruptionKind"
+        },
+        "severities": {
+          "items": {
+            "type": "integer"
+          },
+          "minItems": 1,
+          "title": "Severities",
+          "type": "array"
+        }
+      },
+      "required": [
+        "kind",
+        "severities"
+      ],
+      "title": "CorruptionSpec",
+      "type": "object"
+    },
+    "DatasetInfo": {
+      "additionalProperties": false,
+      "properties": {
+        "dataset_id": {
+          "title": "Dataset Id",
+          "type": "string"
+        },
+        "name": {
+          "title": "Name",
+          "type": "string"
+        },
+        "image_count": {
+          "minimum": 0,
+          "title": "Image Count",
+          "type": "integer"
+        },
+        "has_ground_truth": {
+          "title": "Has Ground Truth",
+          "type": "boolean"
+        },
+        "license": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "License"
+        }
+      },
+      "required": [
+        "dataset_id",
+        "name",
+        "image_count",
+        "has_ground_truth"
+      ],
+      "title": "DatasetInfo",
+      "type": "object"
+    },
+    "EvalConfig": {
+      "additionalProperties": false,
+      "properties": {
+        "model_id": {
+          "minLength": 1,
+          "title": "Model Id",
+          "type": "string"
+        },
+        "dataset_id": {
+          "minLength": 1,
+          "title": "Dataset Id",
+          "type": "string"
+        },
+        "corruptions": {
+          "items": {
+            "$ref": "#/$defs/CorruptionSpec"
+          },
+          "minItems": 1,
+          "title": "Corruptions",
+          "type": "array"
+        },
+        "seed": {
+          "default": 0,
+          "title": "Seed",
+          "type": "integer"
+        },
+        "score_threshold": {
+          "default": 0.5,
+          "maximum": 1.0,
+          "minimum": 0.0,
+          "title": "Score Threshold",
+          "type": "number"
+        },
+        "match_iou_threshold": {
+          "default": 0.5,
+          "exclusiveMinimum": 0.0,
+          "maximum": 1.0,
+          "title": "Match Iou Threshold",
+          "type": "number"
+        },
+        "max_images": {
+          "anyOf": [
+            {
+              "minimum": 1,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Max Images"
+        }
+      },
+      "required": [
+        "model_id",
+        "dataset_id",
+        "corruptions"
+      ],
+      "title": "EvalConfig",
+      "type": "object"
+    },
+    "FailureInfo": {
+      "additionalProperties": false,
+      "properties": {
+        "image_id": {
+          "title": "Image Id",
+          "type": "string"
+        },
+        "corruption": {
+          "$ref": "#/$defs/CorruptionKind"
+        },
+        "severity": {
+          "title": "Severity",
+          "type": "integer"
+        },
+        "failure_type": {
+          "$ref": "#/$defs/FailureType"
+        },
+        "clean_index": {
+          "anyOf": [
+            {
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Clean Index"
+        },
+        "corrupted_index": {
+          "anyOf": [
+            {
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Corrupted Index"
+        },
+        "clean_prediction": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Prediction"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "corrupted_prediction": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Prediction"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "iou": {
+          "anyOf": [
+            {
+              "maximum": 1.0,
+              "minimum": 0.0,
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Iou"
+        },
+        "details": {
+          "title": "Details",
+          "type": "string"
+        }
+      },
+      "required": [
+        "image_id",
+        "corruption",
+        "severity",
+        "failure_type",
+        "details"
+      ],
+      "title": "FailureInfo",
+      "type": "object"
+    },
+    "FailureType": {
+      "enum": [
+        "MISSING_AFTER_CORRUPTION",
+        "NEW_AFTER_CORRUPTION",
+        "CLASS_FLIP",
+        "LOCALIZATION_SHIFT",
+        "CONFIDENCE_DROP"
+      ],
+      "title": "FailureType",
+      "type": "string"
+    },
+    "ImageConditionResult": {
+      "additionalProperties": false,
+      "properties": {
+        "image_id": {
+          "title": "Image Id",
+          "type": "string"
+        },
+        "corrupted_image_path": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Corrupted Image Path"
+        },
+        "predictions": {
+          "items": {
+            "$ref": "#/$defs/Prediction"
+          },
+          "title": "Predictions",
+          "type": "array"
+        },
+        "matches": {
+          "items": {
+            "$ref": "#/$defs/MatchRecord"
+          },
+          "title": "Matches",
+          "type": "array"
+        },
+        "unmatched_clean_indices": {
+          "items": {
+            "type": "integer"
+          },
+          "title": "Unmatched Clean Indices",
+          "type": "array"
+        },
+        "unmatched_corrupted_indices": {
+          "items": {
+            "type": "integer"
+          },
+          "title": "Unmatched Corrupted Indices",
+          "type": "array"
+        },
+        "metrics": {
+          "$ref": "#/$defs/MetricSet"
+        }
+      },
+      "required": [
+        "image_id",
+        "predictions",
+        "matches",
+        "unmatched_clean_indices",
+        "unmatched_corrupted_indices",
+        "metrics"
+      ],
+      "title": "ImageConditionResult",
+      "type": "object"
+    },
+    "ImageError": {
+      "additionalProperties": false,
+      "properties": {
+        "image_id": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Image Id"
+        },
+        "stage": {
+          "title": "Stage",
+          "type": "string"
+        },
+        "corruption": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/CorruptionKind"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "severity": {
+          "anyOf": [
+            {
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Severity"
+        },
+        "message": {
+          "title": "Message",
+          "type": "string"
+        }
+      },
+      "required": [
+        "stage",
+        "message"
+      ],
+      "title": "ImageError",
+      "type": "object"
+    },
+    "ImagePredictions": {
+      "additionalProperties": false,
+      "properties": {
+        "image_id": {
+          "minLength": 1,
+          "title": "Image Id",
+          "type": "string"
+        },
+        "width": {
+          "exclusiveMinimum": 0,
+          "title": "Width",
+          "type": "integer"
+        },
+        "height": {
+          "exclusiveMinimum": 0,
+          "title": "Height",
+          "type": "integer"
+        },
+        "image_path": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Image Path"
+        },
+        "predictions": {
+          "items": {
+            "$ref": "#/$defs/Prediction"
+          },
+          "title": "Predictions",
+          "type": "array"
+        }
+      },
+      "required": [
+        "image_id",
+        "width",
+        "height",
+        "predictions"
+      ],
+      "title": "ImagePredictions",
+      "type": "object"
+    },
+    "MatchRecord": {
+      "additionalProperties": false,
+      "properties": {
+        "clean_index": {
+          "minimum": 0,
+          "title": "Clean Index",
+          "type": "integer"
+        },
+        "corrupted_index": {
+          "minimum": 0,
+          "title": "Corrupted Index",
+          "type": "integer"
+        },
+        "iou": {
+          "maximum": 1.0,
+          "minimum": 0.0,
+          "title": "Iou",
+          "type": "number"
+        },
+        "confidence_delta": {
+          "maximum": 1.0,
+          "minimum": -1.0,
+          "title": "Confidence Delta",
+          "type": "number"
+        },
+        "class_flip": {
+          "title": "Class Flip",
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "clean_index",
+        "corrupted_index",
+        "iou",
+        "confidence_delta",
+        "class_flip"
+      ],
+      "title": "MatchRecord",
+      "type": "object"
+    },
+    "MetricSet": {
+      "additionalProperties": false,
+      "properties": {
+        "n_clean": {
+          "minimum": 0,
+          "title": "N Clean",
+          "type": "integer"
+        },
+        "n_corrupted": {
+          "minimum": 0,
+          "title": "N Corrupted",
+          "type": "integer"
+        },
+        "n_matched": {
+          "minimum": 0,
+          "title": "N Matched",
+          "type": "integer"
+        },
+        "n_class_flips": {
+          "minimum": 0,
+          "title": "N Class Flips",
+          "type": "integer"
+        },
+        "n_unmatched_clean": {
+          "minimum": 0,
+          "title": "N Unmatched Clean",
+          "type": "integer"
+        },
+        "n_unmatched_corrupted": {
+          "minimum": 0,
+          "title": "N Unmatched Corrupted",
+          "type": "integer"
+        },
+        "detection_retention": {
+          "anyOf": [
+            {
+              "maximum": 1.0,
+              "minimum": 0.0,
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Detection Retention"
+        },
+        "class_consistent_retention": {
+          "anyOf": [
+            {
+              "maximum": 1.0,
+              "minimum": 0.0,
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Class Consistent Retention"
+        },
+        "mean_matched_iou": {
+          "anyOf": [
+            {
+              "maximum": 1.0,
+              "minimum": 0.0,
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Mean Matched Iou"
+        },
+        "mean_confidence_delta": {
+          "anyOf": [
+            {
+              "maximum": 1.0,
+              "minimum": -1.0,
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Mean Confidence Delta"
+        },
+        "class_flip_rate": {
+          "anyOf": [
+            {
+              "maximum": 1.0,
+              "minimum": 0.0,
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Class Flip Rate"
+        },
+        "unavailable": {
+          "additionalProperties": {
+            "type": "string"
+          },
+          "title": "Unavailable",
+          "type": "object"
+        }
+      },
+      "required": [
+        "n_clean",
+        "n_corrupted",
+        "n_matched",
+        "n_class_flips",
+        "n_unmatched_clean",
+        "n_unmatched_corrupted"
+      ],
+      "title": "MetricSet",
+      "type": "object"
+    },
+    "ModelInfo": {
+      "additionalProperties": false,
+      "properties": {
+        "model_id": {
+          "title": "Model Id",
+          "type": "string"
+        },
+        "name": {
+          "title": "Name",
+          "type": "string"
+        },
+        "framework": {
+          "title": "Framework",
+          "type": "string"
+        },
+        "weights": {
+          "title": "Weights",
+          "type": "string"
+        },
+        "weights_license": {
+          "title": "Weights License",
+          "type": "string"
+        },
+        "weights_sha256": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Weights Sha256"
+        }
+      },
+      "required": [
+        "model_id",
+        "name",
+        "framework",
+        "weights",
+        "weights_license"
+      ],
+      "title": "ModelInfo",
+      "type": "object"
+    },
+    "Prediction": {
+      "additionalProperties": false,
+      "properties": {
+        "class_id": {
+          "minimum": 0,
+          "title": "Class Id",
+          "type": "integer"
+        },
+        "class_name": {
+          "minLength": 1,
+          "title": "Class Name",
+          "type": "string"
+        },
+        "confidence": {
+          "maximum": 1.0,
+          "minimum": 0.0,
+          "title": "Confidence",
+          "type": "number"
+        },
+        "bbox_xyxy": {
+          "items": {
+            "type": "number"
+          },
+          "maxItems": 4,
+          "minItems": 4,
+          "title": "Bbox Xyxy",
+          "type": "array"
+        }
+      },
+      "required": [
+        "class_id",
+        "class_name",
+        "confidence",
+        "bbox_xyxy"
+      ],
+      "title": "Prediction",
+      "type": "object"
+    },
+    "RunStatus": {
+      "enum": [
+        "QUEUED",
+        "RUNNING",
+        "COMPLETED",
+        "PARTIAL",
+        "FAILED"
+      ],
+      "title": "RunStatus",
+      "type": "string"
+    }
+  },
+  "additionalProperties": false,
+  "properties": {
+    "schema_version": {
+      "default": "1.0.0",
+      "title": "Schema Version",
+      "type": "string"
+    },
+    "is_fixture": {
+      "default": false,
+      "title": "Is Fixture",
+      "type": "boolean"
+    },
+    "run_id": {
+      "title": "Run Id",
+      "type": "string"
+    },
+    "status": {
+      "$ref": "#/$defs/RunStatus"
+    },
+    "created_at": {
+      "format": "date-time",
+      "title": "Created At",
+      "type": "string"
+    },
+    "model": {
+      "$ref": "#/$defs/ModelInfo"
+    },
+    "dataset": {
+      "$ref": "#/$defs/DatasetInfo"
+    },
+    "config": {
+      "$ref": "#/$defs/EvalConfig"
+    },
+    "clean_predictions": {
+      "items": {
+        "$ref": "#/$defs/ImagePredictions"
+      },
+      "title": "Clean Predictions",
+      "type": "array"
+    },
+    "conditions": {
+      "items": {
+        "$ref": "#/$defs/ConditionResult"
+      },
+      "title": "Conditions",
+      "type": "array"
+    },
+    "failures": {
+      "items": {
+        "$ref": "#/$defs/FailureInfo"
+      },
+      "title": "Failures",
+      "type": "array"
+    },
+    "errors": {
+      "items": {
+        "$ref": "#/$defs/ImageError"
+      },
+      "title": "Errors",
+      "type": "array"
+    },
+    "ground_truth_metrics": {
+      "anyOf": [
+        {
+          "additionalProperties": {
+            "type": "number"
+          },
+          "type": "object"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Ground Truth Metrics"
+    },
+    "software_versions": {
+      "additionalProperties": {
+        "type": "string"
+      },
+      "title": "Software Versions",
+      "type": "object"
+    },
+    "metric_definitions": {
+      "additionalProperties": {
+        "type": "string"
+      },
+      "title": "Metric Definitions",
+      "type": "object"
+    },
+    "limitations": {
+      "items": {
+        "type": "string"
+      },
+      "title": "Limitations",
+      "type": "array"
+    }
+  },
+  "required": [
+    "run_id",
+    "status",
+    "created_at",
+    "model",
+    "dataset",
+    "config",
+    "clean_predictions",
+    "conditions",
+    "failures"
+  ],
+  "title": "EvaluationReport",
+  "type": "object"
+}
