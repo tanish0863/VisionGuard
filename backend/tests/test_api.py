@@ -1,3 +1,4 @@
+from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 
@@ -6,7 +7,15 @@ from fastapi.testclient import TestClient
 from pydantic import ValidationError
 
 from backend.app.contracts import EvalConfig, EvaluationReport, RunStatus
-from backend.app.database import RunDatabase
+from backend.app.database import (
+    DatabaseConfigurationError,
+    DatabaseUnavailableError,
+    RunDatabase,
+    database_url_from_environment,
+    metadata,
+    reports,
+    runs,
+)
 from backend.app.evaluation_adapter import get_evaluator
 from backend.app.main import create_app
 from visionguard_contracts.visionguard.core.fixtures import build_fixture_report
@@ -42,12 +51,19 @@ def make_client(
     tmp_path: Path,
     evaluator: Any,
 ) -> TestClient:
+    database = make_test_database(tmp_path / "test.sqlite3")
     app = create_app(
-        database_path=tmp_path / "test.sqlite3",
+        database=database,
         evaluator=evaluator,
         supported_models=["fasterrcnn_resnet50_fpn"],
     )
     return TestClient(app)
+
+
+def make_test_database(database_path: Path) -> RunDatabase:
+    database = RunDatabase(f"sqlite:///{database_path.as_posix()}")
+    metadata.create_all(database.engine)
+    return database
 
 
 def unexpected_evaluation(
@@ -67,6 +83,7 @@ def test_health_and_supported_models(tmp_path: Path) -> None:
         assert client.get("/health").json() == {
             "status": "healthy",
             "service": "VisionGuard API",
+            "database": "connected",
         }
         assert client.get("/api/v1/models").json() == {
             "models": ["fasterrcnn_resnet50_fpn"]
@@ -228,7 +245,7 @@ def test_invalid_contract_report_is_rejected() -> None:
 
 def test_incomplete_runs_are_marked_failed_after_restart(tmp_path: Path) -> None:
     database_path = tmp_path / "restart.sqlite3"
-    database = RunDatabase(database_path)
+    database = make_test_database(database_path)
     database.create_run(
         {
             "run_id": "incomplete",
@@ -236,12 +253,151 @@ def test_incomplete_runs_are_marked_failed_after_restart(tmp_path: Path) -> None
             "model_id": "fasterrcnn_resnet50_fpn",
             "dataset_id": "visionguard_demo",
             "config": valid_config(),
-            "created_at": "2026-10-24T12:10:00+00:00",
+            "created_at": datetime.now(timezone.utc),
         }
     )
 
-    restarted_database = RunDatabase(database_path)
+    restarted_database = RunDatabase(f"sqlite:///{database_path.as_posix()}")
+    restarted_database.fail_incomplete_runs(datetime.now(timezone.utc))
     run = restarted_database.get_run("incomplete")
     assert run is not None
     assert run["status"] == "FAILED"
     assert run["error_message"] == "Backend restarted before evaluation completed"
+
+
+def test_database_url_is_required_without_fallback() -> None:
+    with pytest.raises(DatabaseConfigurationError, match="DATABASE_URL is required"):
+        database_url_from_environment({})
+
+
+def test_postgres_url_requires_tls_and_hides_password() -> None:
+    url = database_url_from_environment(
+        {"DATABASE_URL": "postgresql://user:secret@db.example/app"}
+    )
+    assert url.drivername == "postgresql+psycopg"
+    assert url.query["sslmode"] == "require"
+    assert "secret" not in url.render_as_string(hide_password=True)
+
+
+@pytest.mark.parametrize("sslmode", ["disable", "allow", "prefer"])
+def test_postgres_url_rejects_weak_tls_modes(sslmode: str) -> None:
+    with pytest.raises(DatabaseConfigurationError, match="must require TLS"):
+        database_url_from_environment(
+            {
+                "DATABASE_URL": (
+                    f"postgresql://user:secret@db.example/app?sslmode={sslmode}"
+                )
+            }
+        )
+
+
+def test_dotenv_file_is_supported(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    dotenv_path = tmp_path / ".env"
+    dotenv_path.write_text(
+        "DATABASE_URL=postgresql://test_user:test_password@db.example/test_db\n",
+        encoding="utf-8",
+    )
+    monkeypatch.delenv("DATABASE_URL", raising=False)
+
+    url = database_url_from_environment(dotenv_path=dotenv_path)
+    assert url.host == "db.example"
+    assert url.query["sslmode"] == "require"
+    assert "test_password" not in url.render_as_string(hide_password=True)
+
+
+def test_database_connectivity_and_tables(tmp_path: Path) -> None:
+    database = make_test_database(tmp_path / "connectivity.sqlite3")
+    database.check_connection()
+    assert set(metadata.tables) == {"runs", "reports"}
+    assert runs.c.config_json.type.__class__.__name__ in {"JSON", "JSONB"}
+    database.dispose()
+
+
+def test_run_and_report_persist_between_database_sessions(tmp_path: Path) -> None:
+    database_path = tmp_path / "persistence.sqlite3"
+    first_session = make_test_database(database_path)
+    created_at = datetime.now(timezone.utc)
+    first_session.create_run(
+        {
+            "run_id": "persisted-run",
+            "status": "QUEUED",
+            "model_id": "fasterrcnn_resnet50_fpn",
+            "dataset_id": "visionguard_demo",
+            "config": valid_config(),
+            "created_at": created_at,
+        }
+    )
+    first_session.start_run("persisted-run", created_at)
+    report_data = make_report("persisted-run", RunStatus.COMPLETED).model_dump(
+        mode="json"
+    )
+    first_session.complete_run(
+        "persisted-run", report_data, "COMPLETED", created_at
+    )
+    first_session.dispose()
+
+    second_session = RunDatabase(f"sqlite:///{database_path.as_posix()}")
+    assert second_session.get_run("persisted-run")["status"] == "COMPLETED"
+    assert second_session.get_report("persisted-run")["report"]["run_id"] == "persisted-run"
+    assert reports.c.report_id.primary_key is True
+    second_session.dispose()
+
+
+def test_database_transaction_rolls_back_on_error(tmp_path: Path) -> None:
+    database = make_test_database(tmp_path / "rollback.sqlite3")
+    with pytest.raises(RuntimeError, match="rollback test"):
+        with database.connection() as connection:
+            connection.execute(
+                runs.insert().values(
+                    run_id="rollback-run",
+                    status="QUEUED",
+                    model_id="m",
+                    dataset_id="d",
+                    config_json=valid_config(),
+                    created_at=datetime.now(timezone.utc),
+                    updated_at=datetime.now(timezone.utc),
+                )
+            )
+            raise RuntimeError("rollback test")
+    assert database.get_run("rollback-run") is None
+    database.dispose()
+
+
+def test_database_errors_are_sanitized() -> None:
+    database = RunDatabase("postgresql://user:secret@127.0.0.1:1/not_real")
+    with pytest.raises(DatabaseUnavailableError) as error:
+        database.check_connection()
+    assert "secret" not in str(error.value)
+    database.dispose()
+
+
+def test_api_sanitizes_database_operation_errors() -> None:
+    class FailingDatabase(RunDatabase):
+        def __init__(self) -> None:
+            pass
+
+        def check_connection(self) -> None:
+            return None
+
+        def fail_incomplete_runs(self, _finished_at: datetime) -> None:
+            _ = _finished_at
+            return None
+
+        def list_runs(
+            self, _limit: int, _offset: int
+        ) -> tuple[list[dict[str, Any]], int]:
+            _ = (_limit, _offset)
+            raise DatabaseUnavailableError("internal server and credential details")
+
+        def dispose(self) -> None:
+            return None
+
+    with TestClient(
+        create_app(
+            database=FailingDatabase(),
+            evaluator=unexpected_evaluation,
+        )
+    ) as client:
+        response = client.get("/api/v1/runs")
+    assert response.status_code == 503
+    assert response.json() == {"detail": "Database is temporarily unavailable"}

@@ -1,120 +1,149 @@
 # VisionGuard backend
 
-## Run locally
+The FastAPI backend stores evaluation runs and reports in PostgreSQL. Neon
+Serverless PostgreSQL is the recommended hosted database. SQLite is used only
+by isolated unit tests; the application never silently falls back to it.
 
-From the repository root, install the backend dependencies and start the API:
+## Create and configure a Neon database
+
+1. Create a Neon project and database in the Neon Console.
+2. In the project dashboard, open **Connect**, choose the database and role,
+   and copy the connection string. Use the pooled URL for normal web service
+   workloads when Neon offers it.
+3. Keep TLS enabled. Neon connection strings should include
+   `sslmode=require`; if omitted, the backend adds that setting. A URL that
+   explicitly disables TLS is rejected.
+4. From the repository root, create a local environment file:
+
+   ```powershell
+   Copy-Item .env.example .env
+   code .env
+   ```
+
+5. Replace the `DATABASE_URL` placeholder in `.env` with the connection string
+   copied from Neon. Do not paste a real URL into source files, logs, issues,
+   or commits. `.env` is ignored by Git.
+
+For production, configure `DATABASE_URL` as a secret environment variable in
+the deployment platform; do not deploy or commit `.env`. The API requires this
+variable and returns a clear startup configuration error when it is absent.
+
+## Install and migrate
+
+Run from the repository root in Windows PowerShell:
 
 ```powershell
-python -m pip install -r backend\requirements.txt
-uvicorn backend.app.main:app --reload
+.\.venv\Scripts\python.exe -m pip install -r .\backend\requirements.txt
+.\.venv\Scripts\python.exe -m alembic -c .\backend\alembic.ini upgrade head
 ```
 
-The interactive OpenAPI documentation is available at `http://127.0.0.1:8000/docs`.
-The SQLite database defaults to `backend\visionguard.sqlite3`; override it with
-`VISIONGUARD_DATABASE_PATH` only if a different location is needed.
+Migrations are versioned in `backend\migrations\versions`. They are not run
+automatically at application startup. Before migrating a database that already
+contains tables or data, take a Neon backup/branch and inspect its schema. The
+initial migration leaves compatible `runs` and `reports` tables in place, adds
+missing indexes, and refuses incompatible existing tables rather than
+dropping or rewriting them. Do not stamp an existing database or edit the
+Alembic version table without reviewing its schema and migration history.
 
-## Shared evaluation contract
+To add a future migration after changing the SQLAlchemy metadata:
 
-The backend imports the shared models and evaluator from
-`visionguard_contracts\visionguard`. Run the API from the repository root so
-the shared package is available. It calls
-`visionguard.core.api:evaluate_run(config, run_id=...)`; `VISIONGUARD_EVALUATOR`
-can override that import target if needed.
+```powershell
+.\.venv\Scripts\python.exe -m alembic -c .\backend\alembic.ini revision --autogenerate -m "describe schema change"
+```
 
-The shared evaluator currently returns a **fixture/demo report**. It validates
-the `EvalConfig` but intentionally ignores most configuration values and
-returns demo data; it is not a real model evaluation. Its report sets
-`is_fixture: true`, which clients should display as demo data. The API validates
-the returned value against `EvaluationReport`, requires the report's `run_id`
-to match the backend-generated ID, and stores its JSON-compatible form.
+Review and test the generated migration before applying it with `upgrade head`.
+Keep migrations data-preserving; automatic downgrades are intentionally
+disabled to avoid deleting evaluation data.
 
-`VISIONGUARD_SUPPORTED_MODELS` optionally provides comma-separated model IDs
-for API-side validation. With no model registry configured, `/api/v1/models`
-returns an empty list and no API-side model allowlist is applied.
+The previous local `backend\visionguard.sqlite3` file is not used by the new
+application and is left untouched. It contained no run or report rows when
+inspected. The migration does not copy SQLite data to Neon.
 
-## API contract
+## Start and verify the API
 
-All routes except `/` and `/health` use the `/api/v1` prefix.
+```powershell
+.\.venv\Scripts\python.exe -m uvicorn backend.app.main:app --reload
+```
+
+Open `http://127.0.0.1:8000/docs` for interactive API documentation. The
+database-aware health endpoint is `http://127.0.0.1:8000/health`; it returns
+`503` if the database is unavailable. Run list and report operations continue
+to use the existing API contract:
 
 | Method | Path | Purpose |
 |---|---|---|
-| `GET` | `/health` | Service health |
+| `GET` | `/health` | API and database connectivity |
 | `GET` | `/api/v1/models` | Configured model IDs |
 | `POST` | `/api/v1/runs` | Validate, persist, and queue an evaluation |
 | `GET` | `/api/v1/runs` | List runs (`limit` 1-100, `offset` >= 0) |
-| `GET` | `/api/v1/runs/{run_id}` | Run status and failure details |
-| `GET` | `/api/v1/runs/{run_id}/report` | Valid terminal report JSON |
+| `GET` | `/api/v1/runs/{run_id}` | Retrieve persisted run status |
+| `GET` | `/api/v1/runs/{run_id}/report` | Retrieve the stored terminal report |
 
-Create a run:
+Set optional model IDs as a comma-separated environment variable:
 
-```http
-POST /api/v1/runs
-Content-Type: application/json
+```powershell
+$env:VISIONGUARD_SUPPORTED_MODELS = "fasterrcnn_resnet50_fpn"
 ```
 
-```json
-{
-  "model_id": "fasterrcnn_resnet50_fpn",
-  "dataset_id": "visionguard_demo",
-  "corruptions": [
-    {"kind": "blur", "severities": [2]},
-    {"kind": "low_light", "severities": [2]}
-  ],
-  "seed": 42,
-  "score_threshold": 0.5,
-  "match_iou_threshold": 0.5,
-  "max_images": null
-}
-```
+The API calls `visionguard.core.api:evaluate_run(config, run_id=...)` and
+validates reports against the shared `EvaluationReport` contract. The current
+shared evaluator returns fixture/demo data and marks it `is_fixture: true`;
+this is not real model inference.
 
-The response is `202 Accepted` with the run's initial state:
+## Database and migrations
 
-```json
-{
-  "run_id": "a5aaf889-1cbd-4a8c-a36c-d3353649ee3c",
-  "status": "QUEUED",
-  "model_id": "fasterrcnn_resnet50_fpn",
-  "dataset_id": "validation",
-  "created_at": "2026-10-24T12:10:00+00:00",
-  "started_at": null,
-  "finished_at": null,
-  "error_message": null
-}
-```
+SQLAlchemy provides a small synchronous connection pool with connection
+pre-ping; `psycopg` connects to PostgreSQL. Run configuration and report
+payloads are stored as PostgreSQL `JSONB`, alongside relational run IDs,
+statuses, model/dataset IDs, timestamps, and error messages. Reports have a
+unique run foreign key. Indexes support time-ordered and status-filtered run
+queries. Every write is transactional and uses parameterized SQL expressions.
 
-Poll `GET /api/v1/runs/{run_id}` for `QUEUED`, `RUNNING`, `COMPLETED`,
-`PARTIAL`, or `FAILED`. Reports with any terminal status are stored and
-retrievable, including valid `PARTIAL` and `FAILED` reports. An evaluator
-exception or invalid report produces a `FAILED` run without a report. In that
-case the report endpoint returns `409`. A report response is shown below as an abbreviated excerpt; the actual response contains the full `EvaluationReport` contract:
+The migration-managed schema consists of:
 
-```json
-{
-  "run_id": "a5aaf889-1cbd-4a8c-a36c-d3353649ee3c",
-  "created_at": "2026-10-24T12:10:03+00:00",
-  "report": {
-    "is_fixture": true,
-    "run_id": "a5aaf889-1cbd-4a8c-a36c-d3353649ee3c",
-    "status": "COMPLETED"
-  }
-}
-```
+- `runs`: ID, status, model/dataset IDs, JSONB config, creation/update and
+  lifecycle timestamps,
+  and a safe error summary.
+- `reports`: report ID, unique run ID foreign key, JSONB report, and creation
+  timestamp.
+- `alembic_version`: Alembic's migration revision tracking table.
 
-Invalid bodies and unsupported configured model IDs return `422`. Unknown run
-IDs return `404`. A report requested before a terminal report is available
-returns `409`. Safe run-level error messages summarize evaluation failures;
-structured details from valid partial/failed reports are available in the
-report response. Reports are stored as JSON in SQLite.
-On application startup, runs left queued or running by a previous process are
-marked `FAILED`; their error message indicates that the backend restarted.
+The API checks database connectivity on startup and during `/health`. It does
+not create or alter production tables on startup. Database errors returned by
+the API are sanitized and do not include the URL, password, or driver details.
 
 ## Tests
 
-From the repository root, run:
+The normal suite uses temporary SQLite databases and mocked evaluator data. It
+does not connect to Neon or require model weights/GPU:
 
 ```powershell
 .\.venv\Scripts\python.exe -m pytest .\visionguard_contracts\tests .\backend\tests -v
 ```
 
-Tests inject mocked evaluator results and use temporary SQLite databases; they
-do not download models or require GPU access.
+An optional read-only connectivity test uses a **dedicated test database**:
+
+```powershell
+$env:TEST_DATABASE_URL = "postgresql://USER:PASSWORD@TEST_HOST/TEST_DATABASE?sslmode=require"
+.\.venv\Scripts\python.exe -m pytest .\backend\tests\test_postgres_integration.py -v
+```
+
+That test only runs `SELECT 1`; it does not create, alter, or delete tables. Do
+not set `TEST_DATABASE_URL` to a production database. Unit tests use in-memory
+or temporary SQLite files and never read or modify `DATABASE_URL`.
+
+## Troubleshooting
+
+- **`DATABASE_URL is required`:** Create `.env` from `.env.example`, set the
+  connection string, and run the commands from the repository root.
+- **TLS/SSL errors:** Copy the current Neon connection string and keep
+  `sslmode=require`; do not disable TLS.
+- **Authentication or host errors:** Re-copy the URL from Neon’s **Connect**
+  panel, confirm the role/database, and rotate credentials in Neon if exposed.
+  Never paste credentials into chat or commit them.
+- **Missing-table or migration errors:** Apply `alembic upgrade head`. If the
+  initial migration reports incompatible existing tables, stop and inspect
+  the schema and take a backup; do not drop the tables to force the migration.
+- **Network/pooler errors:** Confirm outbound connectivity and use the pooled
+  connection URL intended for application workloads. The full URL is never
+  intentionally logged by this backend.
