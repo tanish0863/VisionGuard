@@ -1,0 +1,95 @@
+{
+  "$defs": {
+    "CorruptionKind": {
+      "enum": [
+        "blur",
+        "low_light",
+        "gaussian_noise"
+      ],
+      "title": "CorruptionKind",
+      "type": "string"
+    },
+    "CorruptionSpec": {
+      "additionalProperties": false,
+      "properties": {
+        "kind": {
+          "$ref": "#/$defs/CorruptionKind"
+        },
+        "severities": {
+          "items": {
+            "type": "integer"
+          },
+          "minItems": 1,
+          "title": "Severities",
+          "type": "array"
+        }
+      },
+      "required": [
+        "kind",
+        "severities"
+      ],
+      "title": "CorruptionSpec",
+      "type": "object"
+    }
+  },
+  "additionalProperties": false,
+  "properties": {
+    "model_id": {
+      "minLength": 1,
+      "title": "Model Id",
+      "type": "string"
+    },
+    "dataset_id": {
+      "minLength": 1,
+      "title": "Dataset Id",
+      "type": "string"
+    },
+    "corruptions": {
+      "items": {
+        "$ref": "#/$defs/CorruptionSpec"
+      },
+      "minItems": 1,
+      "title": "Corruptions",
+      "type": "array"
+    },
+    "seed": {
+      "default": 0,
+      "title": "Seed",
+      "type": "integer"
+    },
+    "score_threshold": {
+      "default": 0.5,
+      "maximum": 1.0,
+      "minimum": 0.0,
+      "title": "Score Threshold",
+      "type": "number"
+    },
+    "match_iou_threshold": {
+      "default": 0.5,
+      "exclusiveMinimum": 0.0,
+      "maximum": 1.0,
+      "title": "Match Iou Threshold",
+      "type": "number"
+    },
+    "max_images": {
+      "anyOf": [
+        {
+          "minimum": 1,
+          "type": "integer"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Max Images"
+    }
+  },
+  "required": [
+    "model_id",
+    "dataset_id",
+    "corruptions"
+  ],
+  "title": "EvalConfig",
+  "type": "object"
+}
