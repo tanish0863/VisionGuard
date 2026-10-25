@@ -13,6 +13,7 @@ from typing import Callable
 from uuid import uuid4
 
 from fastapi import BackgroundTasks, FastAPI, HTTPException, Query, Request
+from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 
 from backend.app.contracts import EvalConfig, EvaluationReport
@@ -88,6 +89,14 @@ def create_app(
         lifespan=lifespan,
     )
     application.state.supported_models = models
+
+    application.add_middleware(
+        CORSMiddleware,
+        allow_origins=["*"],
+        allow_credentials=True,
+        allow_methods=["*"],
+        allow_headers=["*"],
+    )
 
     @application.exception_handler(DatabaseUnavailableError)
     async def database_error_handler(

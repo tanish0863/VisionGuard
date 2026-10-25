@@ -58,6 +58,7 @@ datasets/
 # Environment Variables & Secrets
 .env
 .env.*
+*.env
 !.env.example
 
 # Build & Packaging
