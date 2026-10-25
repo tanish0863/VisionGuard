@@ -3,10 +3,15 @@ from pathlib import Path
 
 import pytest
 from pydantic import ValidationError
-
-from visionguard.core import evaluate_run
-from visionguard.core.fixtures import build_fixture_report
-from visionguard.core.types import (EvalConfig, EvaluationReport, MatchRecord, MetricSet, Prediction)
+from visionguard_contracts.visionguard.core import evaluate_run
+from visionguard_contracts.visionguard.core.fixtures import build_fixture_report
+from visionguard_contracts.visionguard.core.types import (
+    EvalConfig,
+    EvaluationReport,
+    MatchRecord,
+    MetricSet,
+    Prediction,
+)
 
 ROOT = Path(__file__).resolve().parent.parent
 

@@ -4,8 +4,14 @@ Adds the project root (parent of this file) and the visionguard_contracts
 package to sys.path so that both ``visionguard`` and
 ``visionguard_contracts`` are importable without a pip install.
 """
+import os
 import sys
 from pathlib import Path
+
+# Prevent OpenBLAS/MKL thread buffer exhaustion on Windows
+os.environ.setdefault("OPENBLAS_NUM_THREADS", "1")
+os.environ.setdefault("OMP_NUM_THREADS", "1")
+os.environ.setdefault("MKL_NUM_THREADS", "1")
 
 # Project root: d:/Projects/VisionGuard/
 _PROJECT_ROOT = Path(__file__).resolve().parent.parent

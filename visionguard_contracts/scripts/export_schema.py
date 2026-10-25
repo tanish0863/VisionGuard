@@ -2,8 +2,8 @@
 import json
 from pathlib import Path
 
-from visionguard.core.fixtures import build_fixture_report
-from visionguard.core.types import EvalConfig, EvaluationReport
+from visionguard_contracts.visionguard.core.fixtures import build_fixture_report
+from visionguard_contracts.visionguard.core.types import EvalConfig, EvaluationReport
 
 root = Path(__file__).resolve().parent.parent
 rep = build_fixture_report()
