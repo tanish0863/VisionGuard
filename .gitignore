@@ -1,0 +1,83 @@
+# =============================================================================
+# VisionGuard — .gitignore
+# =============================================================================
+
+# Virtual Environments
+.venv/
+.venv-gpu/
+.venv*/
+venv/
+env/
+ENV/
+env.bak/
+venv.bak/
+
+# Python Bytecode & Cache
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+
+# Testing & Linting
+.pytest_cache/
+.coverage
+.coverage.*
+htmlcov/
+.mypy_cache/
+.ruff_cache/
+.tox/
+.nox/
+
+# VisionGuard Run Artifacts & Scratch
+artifacts/
+scratch/
+runs/
+*.log
+
+# Machine Learning Weights & Checkpoints (Do not commit large binary weights)
+*.pt
+*.pth
+*.bin
+*.onnx
+*.safetensors
+*.ckpt
+checkpoints/
+weights/
+
+# Large Datasets & Archives
+data/
+datasets/
+*.zip
+*.tar
+*.tar.gz
+*.tgz
+*.rar
+*.7z
+
+# Environment Variables & Secrets
+.env
+.env.*
+!.env.example
+
+# Build & Packaging
+build/
+dist/
+*.egg-info/
+*.egg
+*.whl
+
+# IDEs & Text Editors
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+*.sublime-project
+*.sublime-workspace
+
+# Operating System Files
+.DS_Store
+Thumbs.db
+desktop.ini
+$RECYCLE.BIN/
