@@ -1,4 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
+import { Landing } from "@/components/visionguard/landing";
 
 export const Route = createFileRoute("/")({
   head: () => ({
@@ -22,12 +23,5 @@ export const Route = createFileRoute("/")({
 });
 
 function Index() {
-  return (
-    <iframe
-      src="/portholevoyage/index.html"
-      title="VisionGuard AI Model Reliability"
-      className="fixed inset-0 h-screen w-screen border-0"
-      allow="fullscreen; autoplay"
-    />
-  );
+  return <Landing />;
 }

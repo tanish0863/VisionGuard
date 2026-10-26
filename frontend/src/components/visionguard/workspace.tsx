@@ -7,17 +7,40 @@ import {
   ArrowRight,
   CheckCircle2,
   Clock,
+  Database,
+  Download,
   Eye,
   FileSearch,
+  FileSpreadsheet,
   Filter,
   Layers,
+  LogIn,
+  LogOut,
+  Mail,
   Play,
   Plus,
   RefreshCw,
   Sparkles,
+  TrendingDown,
+  User,
   XCircle,
 } from "lucide-react";
+import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
+import {
+  getUserProfile,
+  clearUserProfile,
+  type UserProfile,
+} from "@/lib/database";
+import {
+  AreaChart,
+  Area,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  Tooltip as RechartsTooltip,
+  ResponsiveContainer,
+} from "recharts";
 import {
   api,
   type ArtifactItem,
@@ -28,6 +51,47 @@ import {
   type RunCreateRequest,
   type RunResponse,
 } from "@/lib/api";
+
+const DEGRADATION_BENCHMARK = [
+  { severity: "Tier 1", blur: 98.4, fog: 96.2, noise: 97.8 },
+  { severity: "Tier 2", blur: 95.1, fog: 91.4, noise: 93.6 },
+  { severity: "Tier 3", blur: 89.6, fog: 84.3, noise: 88.0 },
+  { severity: "Tier 4", blur: 81.2, fog: 72.8, noise: 79.4 },
+  { severity: "Tier 5", blur: 69.5, fog: 58.1, noise: 67.2 },
+];
+
+// Helper to export real reports as JSON
+export function downloadRealReportAsJson(runId: string, report: EvaluationReport | Record<string, unknown>) {
+  const blob = new Blob([JSON.stringify(report, null, 2)], { type: "application/json" });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = `visionguard-report-${runId}.json`;
+  a.click();
+  URL.revokeObjectURL(url);
+  toast.success(`Report downloaded as JSON!`);
+}
+
+// Helper to export real reports as CSV
+export function downloadRealReportAsCsv(runId: string, report: EvaluationReport) {
+  const headers = ["Condition", "Clean mAP50", "Corrupted mAP50", "mAP Retention", "Status"];
+  const rows = Object.entries(report.conditions || {}).map(([name, c]) => [
+    `"${name}"`,
+    c.metrics?.clean_map50 != null ? c.metrics.clean_map50.toFixed(4) : "N/A",
+    c.metrics?.map50 != null ? c.metrics.map50.toFixed(4) : "N/A",
+    c.metrics?.retention_map50 != null ? `${(c.metrics.retention_map50 * 100).toFixed(1)}%` : "N/A",
+    c.status || "COMPLETED",
+  ]);
+  const csvContent = [headers.join(","), ...rows.map((r) => r.join(","))].join("\n");
+  const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = `visionguard-report-${runId}.csv`;
+  a.click();
+  URL.revokeObjectURL(url);
+  toast.success(`Report breakdown downloaded as CSV!`);
+}
 
 // -----------------------------------------------------------------------------
 // Workspace Layout
@@ -40,7 +104,11 @@ export function Workspace({
   title: string;
   children: ReactNode;
 }) {
+  const navigate = useNavigate();
   const [apiConnected, setApiConnected] = useState<boolean | null>(null);
+  const [user, setUser] = useState<UserProfile | null>(() => getUserProfile());
+  const [isProfileOpen, setIsProfileOpen] = useState(false);
+  const profileMenuRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     let mounted = true;
@@ -57,47 +125,216 @@ export function Workspace({
     };
   }, []);
 
+  useEffect(() => {
+    const handleUserChange = () => {
+      setUser(getUserProfile());
+    };
+    window.addEventListener("visionguard_user_changed", handleUserChange);
+    return () => window.removeEventListener("visionguard_user_changed", handleUserChange);
+  }, []);
+
+  useEffect(() => {
+    const handleClickOutside = (e: MouseEvent) => {
+      if (profileMenuRef.current && !profileMenuRef.current.contains(e.target as Node)) {
+        setIsProfileOpen(false);
+      }
+    };
+    if (isProfileOpen) {
+      document.addEventListener("mousedown", handleClickOutside);
+    }
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, [isProfileOpen]);
+
+  const handleLogout = () => {
+    clearUserProfile();
+    setUser(null);
+    setIsProfileOpen(false);
+    toast.info("Signed out of VisionGuard");
+    navigate({ to: "/login" });
+  };
+
   return (
-    <div className="vg-workspace min-h-screen bg-background text-foreground">
-      <header className="vg-header flex flex-wrap items-center justify-between gap-5 border-b border-border px-6 py-5">
-        <Link to="/" className="flex items-center gap-2 text-xl font-semibold">
-          <Activity className="text-primary" />
-          VisionGuard <span className="font-normal text-muted-foreground">AI</span>
+    <div className="vg-workspace vg-workspace-enter min-h-screen text-foreground antialiased selection:bg-primary/30">
+      {/* Top Header */}
+      <header className="vg-header sticky top-0 z-40 flex flex-wrap items-center justify-between gap-5 border-b border-border/40 bg-background/80 px-6 py-4 backdrop-blur-xl transition-all">
+        <Link
+          to="/"
+          className="group flex items-center gap-2.5 text-xl font-semibold tracking-tight transition-opacity hover:opacity-95"
+        >
+          <div className="relative flex h-8 w-8 items-center justify-center rounded-lg bg-cyan-500/10 border border-cyan-500/25 shadow-[0_0_14px_rgba(56,189,248,0.25)] transition-transform duration-200 group-hover:scale-105">
+            <img
+              src="/visionguard-shield.png"
+              alt="VisionGuard Logo"
+              className="h-6 w-6 object-contain drop-shadow-[0_0_8px_rgba(56,189,248,0.4)]"
+            />
+          </div>
+          <span className="flex items-center gap-1 font-bold tracking-tight">
+            <span className="text-white">Vision</span>
+            <span className="bg-gradient-to-r from-cyan-400 via-sky-400 to-indigo-400 bg-clip-text text-transparent">
+              Guard
+            </span>
+            <span className="ml-1 text-xs font-semibold px-1.5 py-0.5 rounded bg-cyan-500/15 text-cyan-400 border border-cyan-500/30">
+              AI
+            </span>
+          </span>
         </Link>
-        <nav aria-label="Workspace navigation" className="flex flex-wrap items-center gap-5 text-sm">
-          <Link to="/dashboard" activeProps={{ className: "text-primary font-medium" }}>
+
+        <nav
+          aria-label="Workspace navigation"
+          className="flex flex-wrap items-center gap-1 rounded-full border border-border/40 bg-card/40 p-1 text-sm backdrop-blur-md"
+        >
+          <Link
+            to="/dashboard"
+            className="rounded-full px-4 py-1.5 transition-all text-muted-foreground hover:text-foreground"
+            activeProps={{
+              className: "bg-primary text-primary-foreground font-medium shadow-sm hover:text-primary-foreground",
+            }}
+          >
             Overview
           </Link>
-          <Link to="/new" activeProps={{ className: "text-primary font-medium" }}>
+          <Link
+            to="/new"
+            className="rounded-full px-4 py-1.5 transition-all text-muted-foreground hover:text-foreground"
+            activeProps={{
+              className: "bg-primary text-primary-foreground font-medium shadow-sm hover:text-primary-foreground",
+            }}
+          >
             New evaluation
           </Link>
-          <Link to="/settings" activeProps={{ className: "text-primary font-medium" }}>
+          <Link
+            to="/settings"
+            className="rounded-full px-4 py-1.5 transition-all text-muted-foreground hover:text-foreground"
+            activeProps={{
+              className: "bg-primary text-primary-foreground font-medium shadow-sm hover:text-primary-foreground",
+            }}
+          >
             Settings & glossary
           </Link>
         </nav>
-        {apiConnected === true ? (
-          <span className="flex items-center gap-2 text-xs font-medium text-emerald-400">
-            <span className="h-2 w-2 rounded-full bg-emerald-400 animate-pulse" />
-            Backend Connected (FastAPI)
-          </span>
-        ) : apiConnected === false ? (
-          <span className="flex items-center gap-2 text-xs text-rose-400">
-            <AlertCircle size={15} />
-            Backend Disconnected (Port 8000)
-          </span>
-        ) : (
-          <span className="flex items-center gap-2 text-xs text-muted-foreground">
-            <Clock size={15} className="animate-spin" />
-            Checking connection...
-          </span>
-        )}
+
+        <div className="flex items-center gap-3">
+          {apiConnected === true ? (
+            <span className="hidden sm:flex items-center gap-2 rounded-full border border-border/40 bg-card/50 px-3 py-1.5 text-xs font-medium text-emerald-400 backdrop-blur-md">
+              <span className="h-2 w-2 rounded-full bg-emerald-400 animate-pulse" />
+              API Connected (FastAPI)
+            </span>
+          ) : apiConnected === false ? (
+            <span className="hidden sm:flex items-center gap-2 rounded-full border border-rose-500/30 bg-rose-950/40 px-3 py-1.5 text-xs text-rose-400 backdrop-blur-md">
+              <AlertCircle size={14} />
+              API Offline (Port 8000)
+            </span>
+          ) : (
+            <span className="hidden sm:flex items-center gap-2 rounded-full border border-border/40 bg-card/50 px-3 py-1.5 text-xs text-muted-foreground backdrop-blur-md">
+              <Clock size={13} className="animate-spin" />
+              Connecting...
+            </span>
+          )}
+
+          {/* Interactive User Profile Menu */}
+          <div className="relative" ref={profileMenuRef}>
+            <button
+              type="button"
+              onClick={() => setIsProfileOpen((prev) => !prev)}
+              title={user ? `${user.name} (${user.email})` : "Guest Profile"}
+              className="group relative flex h-9 w-9 items-center justify-center rounded-full border border-white/25 bg-[#06181d]/90 text-white backdrop-blur-xl shadow-[0_4px_20px_rgba(0,0,0,0.6)] transition-all hover:scale-105 hover:border-[#ff6b4a]/70 hover:shadow-[0_0_18px_rgba(255,107,74,0.35)] cursor-pointer"
+            >
+              {user ? (
+                <div className="flex h-7 w-7 items-center justify-center rounded-full bg-[#ff6b4a]/25 text-xs font-black text-[#ff8a66] border border-[#ff6b4a]/40 shadow-inner group-hover:text-white transition-colors">
+                  {user.name.charAt(0).toUpperCase()}
+                </div>
+              ) : (
+                <div className="flex h-7 w-7 items-center justify-center rounded-full bg-white/10 text-xs font-medium text-slate-300 border border-white/15">
+                  <User size={13} />
+                </div>
+              )}
+              <span
+                className={`absolute -bottom-0.5 -right-0.5 h-2.5 w-2.5 rounded-full ring-2 ring-black ${
+                  user ? "bg-emerald-400" : "bg-slate-500"
+                }`}
+              />
+            </button>
+
+            {/* Profile Popover */}
+            {isProfileOpen && (
+              <div className="absolute right-0 mt-2 w-76 origin-top-right rounded-2xl border border-white/20 bg-[#071d22]/98 p-5 text-white shadow-[0_20px_60px_rgba(0,0,0,0.9)] backdrop-blur-2xl transition-all animate-in fade-in zoom-in-95 z-50">
+                {user ? (
+                  <>
+                    <div className="flex items-center gap-3.5 border-b border-white/15 pb-4 mb-4">
+                      <div className="flex h-12 w-12 items-center justify-center rounded-full bg-[#ff6b4a]/25 text-xl font-black text-[#ff8a66] border border-[#ff6b4a]/50 shadow-[0_0_18px_rgba(255,107,74,0.4)]">
+                        {user.name.charAt(0).toUpperCase()}
+                      </div>
+                      <div className="flex flex-col overflow-hidden">
+                        <span className="text-base font-bold text-white tracking-tight truncate">{user.name}</span>
+                        <span className="text-xs text-slate-300 font-mono truncate">{user.email}</span>
+                        <div className="flex items-center gap-1.5 mt-1.5">
+                          <Database size={13} className="text-emerald-400" />
+                          <span className="text-[11px] font-bold text-emerald-400">Profile Active</span>
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="space-y-2 py-1 text-xs border-b border-white/15 pb-4 mb-4">
+                      <div className="flex justify-between items-center">
+                        <span className="text-slate-400 font-medium">Organization</span>
+                        <span className="text-white font-semibold truncate max-w-[150px]">
+                          {user.organization || "None"}
+                        </span>
+                      </div>
+                      <div className="flex justify-between items-center">
+                        <span className="text-slate-400 font-medium">Role</span>
+                        <span className="text-[#ff8a66] font-semibold">{user.role || "Researcher"}</span>
+                      </div>
+                      <div className="flex justify-between items-center">
+                        <span className="text-slate-400 font-medium">Account ID</span>
+                        <span className="font-mono text-[11px] text-slate-300 truncate max-w-[130px]">{user.id}</span>
+                      </div>
+                    </div>
+
+                    <div className="pt-1">
+                      <button
+                        type="button"
+                        onClick={handleLogout}
+                        className="flex w-full items-center gap-2 rounded-xl px-3.5 py-2.5 text-xs font-semibold text-[#ff6b4a] hover:text-white bg-red-500/10 hover:bg-red-500/25 border border-red-500/25 transition-all cursor-pointer"
+                      >
+                        <LogOut size={15} />
+                        <span>Sign out</span>
+                      </button>
+                    </div>
+                  </>
+                ) : (
+                  <>
+                    <div className="flex items-center gap-3.5 border-b border-white/15 pb-4 mb-4">
+                      <div className="flex h-12 w-12 items-center justify-center rounded-full bg-white/10 text-xl font-bold text-slate-300 border border-white/20">
+                        <User size={22} />
+                      </div>
+                      <div className="flex flex-col overflow-hidden">
+                        <span className="text-base font-bold text-white tracking-tight">Guest User</span>
+                        <span className="text-xs text-slate-400 font-mono">Sign in to save evaluations</span>
+                      </div>
+                    </div>
+
+                    <div className="pt-1">
+                      <Link
+                        to="/login"
+                        onClick={() => setIsProfileOpen(false)}
+                        className="flex w-full items-center justify-center gap-2 rounded-xl bg-cyan-500/20 px-3.5 py-2.5 text-xs font-semibold text-cyan-300 hover:bg-cyan-500/30 border border-cyan-500/40 transition-all cursor-pointer"
+                      >
+                        <LogIn size={15} />
+                        <span>Sign In / Register</span>
+                      </Link>
+                    </div>
+                  </>
+                )}
+              </div>
+            )}
+          </div>
+        </div>
       </header>
+
       <main className="mx-auto max-w-6xl px-6 py-12">
         <div className="mb-10 flex flex-wrap items-end justify-between gap-4">
           <div>
-            <p className="mb-3 text-xs uppercase tracking-wider text-primary">
-              VisionGuard / Reliability workspace
-            </p>
+            <p className="mb-3 text-xs uppercase tracking-wider text-primary">VisionGuard / Reliability workspace</p>
             <h1 className="text-3xl font-medium">{title}</h1>
           </div>
           <Link to="/" className="flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground">
@@ -117,10 +354,6 @@ export function Workspace({
               <p className="mt-1 text-xs text-rose-300/80">
                 Ensure the FastAPI backend is running at{" "}
                 <code className="font-mono bg-black/40 px-1 py-0.5 rounded">{api.getBaseUrl()}</code>.
-                Start with:{" "}
-                <code className="font-mono bg-black/40 px-1 py-0.5 rounded">
-                  uvicorn backend.app.main:app --port 8000
-                </code>
               </p>
             </div>
           </div>
@@ -800,7 +1033,31 @@ export function RunDetails({ id }: { id: string }) {
         <p className="font-mono text-sm text-muted-foreground break-all">
           Run ID: <span className="text-foreground">{id}</span>
         </p>
-        <div className="flex items-center gap-3">
+        <div className="flex flex-wrap items-center gap-2">
+          {report && (
+            <>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => downloadRealReportAsJson(id, report)}
+                className="gap-1.5"
+                title="Download full evaluation report as JSON"
+              >
+                <Download size={14} />
+                JSON
+              </Button>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => downloadRealReportAsCsv(id, report)}
+                className="gap-1.5"
+                title="Download condition metrics breakdown as CSV"
+              >
+                <FileSpreadsheet size={14} />
+                CSV
+              </Button>
+            </>
+          )}
           <Button asChild variant="outline" size="sm">
             <Link to="/runs/$id_/failures" params={{ id }}>
               <Eye size={14} className="mr-1.5" />

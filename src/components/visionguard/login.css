@@ -1,0 +1,685 @@
+/* VisionGuard login page — matches the Porthole Voyage design language */
+.vg-login {
+  --ink: #06181d;
+  --ink2: #0b2a31;
+  --petrol: #123a42;
+  --teal: #2d6e6c;
+  --bone: #f4ecdd;
+  --bone2: #e6dccb;
+  --coral: #ff6b4a;
+  --coral2: #ff8a66;
+  --mint: #9ff0d6;
+  --dim: rgba(244, 236, 221, 0.62);
+  --ease: cubic-bezier(0.22, 1, 0.36, 1);
+  position: fixed;
+  inset: 0;
+  overflow-y: auto;
+  overflow-x: hidden;
+  padding: 80px 20px 40px;
+  background: var(--ink2);
+  color: var(--bone);
+  font-family: "General Sans", ui-sans-serif, system-ui, sans-serif;
+  -webkit-font-smoothing: antialiased;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-sizing: border-box;
+}
+.vg-login button { font: inherit; color: inherit; background: none; border: 0; cursor: pointer; }
+.vg-login a { color: inherit; text-decoration: none; }
+
+/* ---------- animated backdrop ---------- */
+.vg-login-bg {
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(120% 90% at 50% 58%, #2f7471 0%, #1a4d52 42%, #0c2b33 78%, #071e25 100%);
+}
+.vg-login-still {
+  position: absolute;
+  inset: 0;
+  background: url(/portholevoyage/assets/still.jpg) center / cover no-repeat;
+  opacity: 0.16;
+}
+.vg-login-vignette {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  z-index: 2;
+  background: radial-gradient(120% 100% at 50% 50%, transparent 60%, rgba(3, 14, 17, 0.4) 100%);
+}
+.vg-login-grain {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  opacity: 0.11;
+  mix-blend-mode: overlay;
+  z-index: 2;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.9' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+}
+
+/* ---------- cursor ---------- */
+.vg-login-cursor-dot,
+.vg-login-cursor-ring {
+  position: fixed;
+  left: 0;
+  top: 0;
+  z-index: 90;
+  pointer-events: none;
+  border-radius: 50%;
+  will-change: transform;
+}
+.vg-login-cursor-dot { width: 7px; height: 7px; background: var(--coral); box-shadow: 0 0 12px var(--coral); }
+.vg-login-cursor-ring {
+  width: 38px;
+  height: 38px;
+  border: 1.5px solid rgba(244, 236, 221, 0.5);
+  transition: width 0.3s var(--ease), height 0.3s var(--ease), border-color 0.3s;
+}
+.vg-login-cursor-ring.on { width: 62px; height: 62px; border-color: var(--coral); }
+@media (pointer: coarse) { .vg-login-cursor-dot, .vg-login-cursor-ring { display: none; } }
+
+/* ---------- header ---------- */
+.vg-login-header {
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 0;
+  z-index: 40;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 22px 24px;
+}
+.vg-login .vg-logo { display: flex; align-items: center; gap: 9px; font-size: 19px; letter-spacing: -0.02em; line-height: 1; }
+.vg-login .vg-logo b { font-weight: 600; }
+.vg-login .vg-logo span { font-weight: 400; opacity: 0.86; }
+.vg-login .vg-glyph { width: 22px; height: 22px; flex: none; }
+
+.vg-login-clock {
+  font-size: 12px;
+  letter-spacing: 0.02em;
+  color: var(--dim);
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+.vg-login-clock i {
+  width: 6px; height: 6px; border-radius: 50%;
+  background: var(--coral);
+  box-shadow: 0 0 10px var(--coral);
+  animation: vg-login-pulse 2s infinite;
+}
+@keyframes vg-login-pulse { 50% { opacity: 0.35; } }
+
+/* ---------- porthole ring decorations ---------- */
+.vg-login-ring-bg {
+  position: absolute;
+  z-index: 3;
+  pointer-events: none;
+}
+.vg-login-ring-bg.tl {
+  width: min(340px, 38vmin);
+  height: min(340px, 38vmin);
+  top: -100px;
+  left: -100px;
+  opacity: 0.13;
+}
+.vg-login-ring-bg.br {
+  width: min(280px, 32vmin);
+  height: min(280px, 32vmin);
+  bottom: -80px;
+  right: -80px;
+  opacity: 0.11;
+}
+.vg-login-ring-bg svg { width: 100%; height: 100%; animation: vg-login-spin 60s linear infinite; }
+@keyframes vg-login-spin { to { transform: rotate(360deg); } }
+
+/* ---------- floating shards ---------- */
+.vg-login-shard {
+  position: absolute;
+  z-index: 4;
+  pointer-events: none;
+  width: calc(var(--w, 18px) * 1.3);
+  left: var(--lx, 50%);
+  top: var(--ly, 50%);
+  animation: vg-login-flo 6s ease-in-out infinite alternate;
+  animation-delay: var(--d, 0s);
+}
+.vg-login-shard svg { width: 100%; display: block; overflow: visible; }
+@keyframes vg-login-flo {
+  from { transform: translate(var(--tx, 0px), var(--ty, 0px)) rotate(var(--r, 0deg)); }
+  to   { transform: translate(calc(var(--tx, 0px) + 8px), calc(var(--ty, 0px) - 16px)) rotate(calc(var(--r, 0deg) + 18deg)); }
+}
+
+/* ---------- main card ---------- */
+.vg-login-wrap {
+  position: relative;
+  z-index: 10;
+  width: min(440px, calc(100vw - 40px));
+  animation: vg-login-appear 0.9s var(--ease) both;
+  animation-delay: 0.1s;
+}
+@keyframes vg-login-appear {
+  from { opacity: 0; transform: translateY(24px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+.vg-login-card {
+  position: relative;
+  background: linear-gradient(145deg, rgba(18, 52, 62, 0.82) 0%, rgba(8, 28, 35, 0.92) 100%);
+  backdrop-filter: blur(22px);
+  -webkit-backdrop-filter: blur(22px);
+  border: 1px solid rgba(244, 236, 221, 0.1);
+  border-radius: 24px;
+  padding: 40px 40px 36px;
+  box-shadow:
+    0 40px 80px -24px rgba(2, 12, 16, 0.8),
+    inset 0 1px 0 rgba(244, 236, 221, 0.08);
+}
+
+/* top accent line */
+.vg-login-card::before {
+  content: "";
+  display: block;
+  height: 2px;
+  background: linear-gradient(90deg, transparent 0%, var(--coral) 25%, var(--mint) 75%, transparent 100%);
+  border-radius: 2px;
+  margin-bottom: 32px;
+  opacity: 0.7;
+}
+
+/* ---------- card brand header ---------- */
+.vg-login-brand {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 6px;
+}
+.vg-login-brand .vg-glyph { width: 26px; height: 26px; }
+.vg-login-brand-name { font-size: 20px; font-weight: 600; letter-spacing: -0.025em; }
+.vg-login-brand-name span { font-weight: 400; opacity: 0.8; }
+
+.vg-login-tagline {
+  font-size: 13px;
+  color: var(--dim);
+  letter-spacing: -0.01em;
+  margin-bottom: 20px;
+}
+
+/* ---------- mode tabs (Sign in / Sign up) ---------- */
+.vg-login-tabs {
+  display: flex;
+  background: rgba(6, 24, 29, 0.7);
+  border: 1px solid rgba(244, 236, 221, 0.1);
+  border-radius: 12px;
+  padding: 4px;
+  margin-bottom: 20px;
+  position: relative;
+  gap: 4px;
+}
+.vg-login-tab {
+  flex: 1;
+  text-align: center;
+  padding: 8px 12px;
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--dim);
+  border-radius: 9px;
+  transition: all 0.25s var(--ease);
+  cursor: pointer;
+  user-select: none;
+  background: transparent;
+  border: none;
+}
+.vg-login-tab:hover {
+  color: var(--bone);
+}
+.vg-login-tab.active {
+  background: rgba(244, 236, 221, 0.13);
+  color: var(--bone);
+  font-weight: 600;
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.25);
+}
+
+.vg-login-terms {
+  display: flex;
+  align-items: flex-start;
+  gap: 9px;
+  cursor: pointer;
+  font-size: 12px;
+  line-height: 1.45;
+  color: var(--dim);
+  user-select: none;
+  margin-top: 2px;
+}
+.vg-login-terms input[type="checkbox"] {
+  width: 15px;
+  height: 15px;
+  margin-top: 2px;
+  accent-color: var(--coral);
+  cursor: pointer;
+  flex: none;
+}
+.vg-login-terms a {
+  color: var(--coral2);
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+.vg-login-terms a:hover {
+  color: var(--coral);
+}
+
+/* ---------- form ---------- */
+.vg-login-form { display: flex; flex-direction: column; gap: 15px; }
+
+.vg-login-field { display: flex; flex-direction: column; gap: 7px; }
+.vg-login-label {
+  font-size: 11px;
+  font-weight: 500;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: rgba(244, 236, 221, 0.55);
+}
+
+.vg-login-input-wrap { position: relative; }
+
+.vg-login-input-icon {
+  position: absolute;
+  left: 14px;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 16px;
+  height: 16px;
+  color: rgba(244, 236, 221, 0.3);
+  pointer-events: none;
+  transition: color 0.25s;
+}
+.vg-login-input-wrap:focus-within .vg-login-input-icon { color: var(--coral); }
+
+/* ---------- Role Popdown Dropdown ---------- */
+.vg-login-role-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 2px;
+}
+.vg-login-role-hint {
+  font-size: 11px;
+  color: #8ee8cb;
+  opacity: 0.85;
+  font-weight: 500;
+  letter-spacing: -0.01em;
+}
+
+.vg-login-role-toggle {
+  position: absolute;
+  right: 8px;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 34px;
+  height: 34px;
+  display: grid;
+  place-items: center;
+  background: transparent;
+  border: none;
+  color: rgba(244, 236, 221, 0.45);
+  cursor: pointer;
+  border-radius: 8px;
+  transition: all 0.2s cubic-bezier(0.2, 0.8, 0.2, 1);
+  padding: 0;
+}
+.vg-login-role-toggle:hover {
+  color: var(--bone);
+  background: rgba(244, 236, 221, 0.08);
+}
+.vg-login-role-toggle svg {
+  width: 17px;
+  height: 17px;
+  transition: transform 0.25s cubic-bezier(0.2, 0.8, 0.2, 1), color 0.2s;
+}
+.vg-login-role-toggle.open svg {
+  transform: rotate(180deg);
+  color: #8ee8cb;
+}
+
+.vg-login-role-popdown {
+  position: absolute;
+  top: calc(100% + 6px);
+  left: 0;
+  right: 0;
+  z-index: 60;
+  background: #081d23;
+  border: 1px solid rgba(142, 232, 203, 0.28);
+  border-radius: 12px;
+  box-shadow: 0 16px 36px rgba(0, 0, 0, 0.7), 0 0 24px rgba(142, 232, 203, 0.12);
+  padding: 8px;
+  backdrop-filter: blur(20px);
+  animation: vgRolePopIn 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+  max-height: 250px;
+  overflow-y: auto;
+}
+
+@keyframes vgRolePopIn {
+  from {
+    opacity: 0;
+    transform: translateY(-6px) scale(0.98);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+.vg-login-role-popdown-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 4px 8px 6px;
+  border-bottom: 1px solid rgba(244, 236, 221, 0.08);
+  margin-bottom: 6px;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: #8ee8cb;
+}
+
+.vg-login-role-options-list {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.vg-login-role-option {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  padding: 8px 12px;
+  border-radius: 8px;
+  border: 1px solid transparent;
+  background: transparent;
+  color: rgba(244, 236, 221, 0.85);
+  font-size: 13px;
+  text-align: left;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  user-select: none;
+}
+.vg-login-role-option:hover {
+  background: rgba(142, 232, 203, 0.12);
+  color: #fff;
+  border-color: rgba(142, 232, 203, 0.3);
+  transform: translateX(2px);
+}
+.vg-login-role-option.selected {
+  background: rgba(142, 232, 203, 0.18);
+  color: #8ee8cb;
+  border-color: rgba(142, 232, 203, 0.45);
+  font-weight: 600;
+}
+
+.vg-login-role-option-check {
+  width: 15px;
+  height: 15px;
+  color: #8ee8cb;
+  flex-shrink: 0;
+}
+
+.vg-login-role-popdown-footer {
+  padding: 6px 8px 3px;
+  font-size: 11px;
+  color: rgba(244, 236, 221, 0.45);
+  border-top: 1px solid rgba(244, 236, 221, 0.06);
+  margin-top: 6px;
+  text-align: center;
+}
+
+.vg-login-input {
+  display: block;
+  width: 100%;
+  height: 48px;
+  padding: 0 44px 0 42px;
+  background: rgba(6, 24, 29, 0.6);
+  border: 1px solid rgba(244, 236, 221, 0.12);
+  border-radius: 12px;
+  color: var(--bone);
+  font-family: inherit;
+  font-size: 15px;
+  letter-spacing: -0.01em;
+  transition: border-color 0.25s, box-shadow 0.25s, background 0.25s;
+  box-sizing: border-box;
+  outline: none;
+  -webkit-appearance: none;
+}
+.vg-login-input::placeholder { color: rgba(244, 236, 221, 0.25); }
+.vg-login-input:focus {
+  border-color: var(--coral);
+  background: rgba(6, 24, 29, 0.8);
+  box-shadow: 0 0 0 3px rgba(255, 107, 74, 0.15);
+}
+
+.vg-login-pw-toggle {
+  position: absolute;
+  right: 8px;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 34px;
+  height: 34px;
+  display: grid;
+  place-items: center;
+  color: rgba(244, 236, 221, 0.3);
+  border-radius: 8px;
+  transition: color 0.2s, background 0.2s;
+  cursor: pointer;
+}
+.vg-login-pw-toggle:hover { color: var(--bone); background: rgba(244, 236, 221, 0.07); }
+.vg-login-pw-toggle svg { width: 16px; height: 16px; }
+
+/* ---------- meta row ---------- */
+.vg-login-meta {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+.vg-login-remember {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  cursor: pointer;
+  font-size: 13px;
+  color: var(--dim);
+  user-select: none;
+}
+.vg-login-remember input[type="checkbox"] {
+  width: 16px;
+  height: 16px;
+  accent-color: var(--coral);
+  cursor: pointer;
+}
+.vg-login-forgot {
+  font-size: 13px;
+  color: var(--coral2);
+  text-decoration: underline;
+  text-decoration-color: transparent;
+  text-underline-offset: 3px;
+  transition: color 0.2s, text-decoration-color 0.2s;
+}
+.vg-login-forgot:hover { color: var(--coral); text-decoration-color: var(--coral); }
+
+/* ---------- submit button ---------- */
+.vg-login-submit {
+  position: relative;
+  width: 100%;
+  height: 52px;
+  margin-top: 4px;
+  border-radius: 12px;
+  background: var(--coral);
+  color: #1a0b06;
+  font-family: inherit;
+  font-size: 15px;
+  font-weight: 600;
+  letter-spacing: -0.02em;
+  cursor: pointer;
+  border: none;
+  overflow: hidden;
+  transition: background 0.25s var(--ease), transform 0.2s var(--ease), box-shadow 0.25s;
+  box-shadow: 0 8px 28px -8px rgba(255, 107, 74, 0.55);
+}
+.vg-login-submit::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(135deg, rgba(255,255,255,0.15) 0%, transparent 55%);
+  pointer-events: none;
+}
+.vg-login-submit:hover {
+  background: var(--coral2);
+  transform: translateY(-1px);
+  box-shadow: 0 14px 36px -8px rgba(255, 107, 74, 0.65);
+}
+.vg-login-submit:active { transform: translateY(0); }
+.vg-login-submit:disabled { opacity: 0.55; cursor: not-allowed; transform: none; }
+.vg-login-submit-inner {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+}
+.vg-login-submit-inner svg { width: 18px; height: 18px; }
+
+/* ---------- divider ---------- */
+.vg-login-divider {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  color: rgba(244, 236, 221, 0.22);
+  font-size: 11px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+.vg-login-divider::before,
+.vg-login-divider::after {
+  content: "";
+  flex: 1;
+  height: 1px;
+  background: rgba(244, 236, 221, 0.1);
+}
+
+/* ---------- OAuth buttons ---------- */
+.vg-login-oauth { display: flex; gap: 10px; }
+.vg-login-oauth-btn {
+  flex: 1;
+  height: 44px;
+  border-radius: 10px;
+  border: 1px solid rgba(244, 236, 221, 0.12);
+  background: rgba(6, 24, 29, 0.5);
+  color: var(--bone);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  font-family: inherit;
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background 0.25s, border-color 0.25s, transform 0.2s var(--ease);
+}
+.vg-login-oauth-btn:hover {
+  background: rgba(244, 236, 221, 0.07);
+  border-color: rgba(244, 236, 221, 0.22);
+  transform: translateY(-1px);
+}
+.vg-login-oauth-btn svg { width: 18px; height: 18px; flex: none; }
+
+/* ---------- footer ---------- */
+.vg-login-footer {
+  text-align: center;
+  margin-top: 22px;
+  font-size: 14px;
+  color: var(--dim);
+}
+.vg-login-footer a {
+  color: var(--coral2);
+  font-weight: 500;
+  text-decoration: underline;
+  text-decoration-color: transparent;
+  text-underline-offset: 3px;
+  transition: color 0.2s, text-decoration-color 0.2s;
+}
+.vg-login-footer a:hover { color: var(--coral); text-decoration-color: var(--coral); }
+
+/* ---------- error ---------- */
+.vg-login-error {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 12px 14px;
+  background: rgba(255, 107, 74, 0.12);
+  border: 1px solid rgba(255, 107, 74, 0.3);
+  border-radius: 10px;
+  font-size: 13px;
+  color: #ffb39e;
+  animation: vg-login-shake 0.35s var(--ease);
+}
+.vg-login-error svg { width: 16px; height: 16px; flex: none; color: var(--coral); }
+@keyframes vg-login-shake {
+  0%,100% { transform: translateX(0); }
+  20% { transform: translateX(-5px); }
+  60% { transform: translateX(5px); }
+  80% { transform: translateX(-3px); }
+}
+
+/* ---------- success overlay ---------- */
+.vg-login-success-overlay {
+  position: absolute;
+  inset: 0;
+  z-index: 20;
+  display: grid;
+  place-items: center;
+  border-radius: 24px;
+  background: rgba(6, 24, 29, 0.9);
+  backdrop-filter: blur(8px);
+  animation: vg-login-fadein 0.4s var(--ease);
+}
+@keyframes vg-login-fadein { from { opacity: 0; } to { opacity: 1; } }
+.vg-login-success-inner { text-align: center; }
+.vg-login-success-icon {
+  width: 64px;
+  height: 64px;
+  border-radius: 50%;
+  background: rgba(159, 240, 214, 0.12);
+  border: 1.5px solid rgba(159, 240, 214, 0.4);
+  display: grid;
+  place-items: center;
+  color: var(--mint);
+  margin: 0 auto 16px;
+  box-shadow: 0 0 28px -6px rgba(159, 240, 214, 0.35);
+}
+.vg-login-success-icon svg { width: 28px; height: 28px; }
+.vg-login-success-text { font-size: 16px; font-weight: 500; color: var(--bone); }
+.vg-login-success-sub { font-size: 13px; color: var(--dim); margin-top: 6px; }
+
+/* ---------- spinner ---------- */
+.vg-login-spinner {
+  width: 18px;
+  height: 18px;
+  border: 2px solid rgba(26, 11, 6, 0.3);
+  border-top-color: #1a0b06;
+  border-radius: 50%;
+  animation: vg-login-spinn 0.65s linear infinite;
+}
+@keyframes vg-login-spinn { to { transform: rotate(360deg); } }
+
+/* ---------- responsive ---------- */
+@media (max-width: 899px) { .vg-login-clock { display: none; } }
+@media (max-width: 640px) {
+  .vg-login-header { padding: 18px; }
+  .vg-login .vg-logo .wm { display: none; }
+  .vg-login-card { padding: 32px 24px 28px; border-radius: 20px; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .vg-login * { transition-duration: 0.01s !important; animation: none !important; }
+}
