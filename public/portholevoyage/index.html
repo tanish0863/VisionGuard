@@ -48,6 +48,39 @@ header>*{pointer-events:auto}
 .pill{display:inline-flex;align-items:center;height:40px;padding:0 18px;border-radius:999px;background:var(--coral);
   color:#1a0b06;font-size:14px;font-weight:500;letter-spacing:-.02em;transition:background .25s,transform .25s var(--ease)}
 .pill:hover{background:var(--coral2);transform:translateY(-1px)}
+.user-corner{position:relative;display:inline-flex;align-items:center;flex-shrink:0}
+.u-btn{position:relative;display:flex;align-items:center;justify-content:center;width:38px;height:38px;border-radius:50%;
+  background:rgba(6,24,29,.85);border:1.5px solid rgba(244,236,221,.25);color:var(--coral2);
+  cursor:pointer;transition:transform .2s var(--ease),border-color .25s,box-shadow .25s;padding:0;box-sizing:border-box}
+.u-btn:hover{transform:scale(1.05);border-color:var(--coral);box-shadow:0 0 16px rgba(255,107,74,.35)}
+.u-avatar{font-size:14px;font-weight:700;line-height:1;text-transform:uppercase;color:var(--bone)}
+.u-dot{position:absolute;bottom:0px;right:0px;width:9px;height:9px;border-radius:50%;background:#10b981;border:2px solid #06181d}
+.u-popover{position:absolute;top:calc(100% + 10px);right:0;width:280px;background:rgba(7,29,34,.98);
+  backdrop-filter:blur(20px);-webkit-backdrop-filter:blur(20px);border:1px solid rgba(244,236,221,.16);
+  border-radius:18px;padding:16px;box-shadow:0 24px 60px rgba(0,0,0,.85);opacity:0;pointer-events:none;
+  transform:translateY(-8px) scale(.97);transform-origin:top right;transition:opacity .25s,transform .25s var(--ease);z-index:90}
+.u-popover.open{opacity:1;pointer-events:auto;transform:none}
+.u-head{display:flex;align-items:center;gap:12px;padding-bottom:12px;border-bottom:1px solid rgba(244,236,221,.1)}
+.u-pop-avatar{width:40px;height:40px;border-radius:50%;background:rgba(255,107,74,.2);border:1.5px solid rgba(255,107,74,.4);
+  display:grid;place-items:center;font-size:17px;font-weight:700;color:var(--coral);flex-shrink:0}
+.u-pop-info{overflow:hidden}
+.u-pop-name{font-size:14px;font-weight:600;color:var(--bone);line-height:1.2;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.u-pop-role{display:inline-block;margin-top:3px;font-size:10px;font-weight:500;padding:2px 7px;border-radius:99px;
+  background:rgba(255,107,74,.15);color:var(--coral2);border:1px solid rgba(255,107,74,.3)}
+.u-pop-email{font-size:11px;color:var(--dim);margin-top:3px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.u-meta{padding:10px 0;border-bottom:1px solid rgba(244,236,221,.1);font-size:11px}
+.u-meta-row{display:flex;justify-content:space-between;align-items:center;padding:3px 0;color:var(--dim)}
+.u-meta-row span:last-child{color:var(--bone);font-weight:500}
+.u-tag-ok{color:#34d399!important;font-weight:500}
+.u-links{display:flex;flex-direction:column;gap:3px;padding:10px 0}
+.u-item{display:flex;justify-content:space-between;align-items:center;padding:8px 10px;border-radius:10px;
+  font-size:13px;color:var(--bone);transition:background .2s,color .2s}
+.u-item:hover{background:rgba(244,236,221,.08);color:var(--coral)}
+.u-arr{opacity:.6;font-size:12px}
+.u-foot{padding-top:8px}
+.u-logout-btn{width:100%;padding:8px;border-radius:10px;background:rgba(239,68,68,.12);border:1px solid rgba(239,68,68,.25);
+  color:#f87171;font-size:12px;font-weight:500;cursor:pointer;transition:background .2s}
+.u-logout-btn:hover{background:rgba(239,68,68,.22)}
 .menubtn{display:none;width:40px;height:40px;border-radius:12px;background:var(--bone);color:var(--ink);place-items:center}
 .menubtn svg{width:18px;height:18px}
 #menu{position:fixed;top:72px;right:var(--gut);width:min(330px,calc(100vw - 2*var(--gut)));z-index:45;background:rgba(6,24,29,.94);
@@ -105,9 +138,7 @@ header>*{pointer-events:auto}
 .w{display:inline-block;white-space:nowrap}
 .caret{display:inline-block;width:.42em;height:.86em;vertical-align:-.08em;margin-left:.06em;background:var(--coral);border-radius:2px;opacity:0}
 
-/* voyage bar */
-#bar{position:fixed;left:0;right:0;bottom:0;z-index:30;opacity:0;pointer-events:none;transition:opacity .6s}
-#bar.on{opacity:1;pointer-events:auto}
+#bar{display:none!important}
 #bar::before{content:"";position:absolute;left:0;right:0;bottom:0;height:120px;background:linear-gradient(to top,rgba(6,24,29,.55),transparent);pointer-events:none}
 #bar .segs{position:relative;display:flex;gap:3px;height:3px}
 #bar .seg{flex:1;background:rgba(244,236,221,.16);overflow:hidden}
@@ -226,6 +257,43 @@ header .logo,.nav a.link,.clock{transition:color .6s}
     <a class="link" href="#" data-go="hull">The evaluation journey</a>
     <a class="link" href="/settings" target="_top">Metric glossary</a>
     <a class="pill" href="/dashboard" target="_top">Open workspace</a>
+    <div class="user-corner" id="uCorner">
+      <button class="u-btn" id="uBtn" aria-label="User Profile" type="button" title="User Profile (0 / null)">
+        <span class="u-avatar" id="uAvatar">?</span>
+        <span class="u-dot" style="background:#64748b"></span>
+      </button>
+      <div class="u-popover" id="uPopover" role="dialog" aria-label="Profile Details">
+        <div class="u-head">
+          <div class="u-pop-avatar" id="uPopAvatar">?</div>
+          <div class="u-pop-info">
+            <div class="u-pop-name" id="uPopName">Guest User</div>
+            <div class="u-pop-role" id="uPopRole">Profile: null</div>
+            <div class="u-pop-email" id="uPopEmail">Database: 0 records / null</div>
+          </div>
+        </div>
+        <div class="u-meta">
+          <div class="u-meta-row"><span>Status</span><span class="u-tag-ok" id="uPopStatus" style="color:#94a3b8!important">● Database: 0 / null</span></div>
+          <div class="u-meta-row"><span>Organization</span><span id="uPopOrg">None</span></div>
+        </div>
+        <div class="u-links">
+          <a href="/dashboard" target="_top" class="u-item">
+            <span>Workspace Overview</span>
+            <span class="u-arr">→</span>
+          </a>
+          <a href="/new" target="_top" class="u-item">
+            <span>New Evaluation</span>
+            <span class="u-arr">+</span>
+          </a>
+          <a href="/settings" target="_top" class="u-item">
+            <span>Metric Glossary</span>
+            <span class="u-arr">⚙</span>
+          </a>
+        </div>
+        <div class="u-foot">
+          <button type="button" class="u-logout-btn" id="uLogoutBtn">Sign out</button>
+        </div>
+      </div>
+    </div>
     <button class="menubtn" id="menubtn" aria-label="Open menu" aria-expanded="false" aria-controls="menu">
       <svg viewBox="0 0 18 18"><circle cx="9" cy="9" r="6.5" fill="none" stroke="currentColor" stroke-width="2"/><circle cx="9" cy="9" r="2" fill="currentColor"/></svg>
     </button>
@@ -1154,28 +1222,90 @@ addEventListener('pointermove', e => {
   hullTarget = clamp(drag.t - dx / (W() * .55), -.25, 2.25);
 });
 addEventListener('pointerup', () => { if (!drag) return; const d = hullTarget - drag.t; hullGo(Math.round(drag.t + (Math.abs(d) > .12 ? Math.sign(d) * Math.max(1, Math.round(Math.abs(d))) : 0))); drag = null; });
+function enterWorkspace() {
+  if (busy) return;
+  busy = true;
+  const flash = document.createElement('div');
+  flash.style.position = 'fixed';
+  flash.style.inset = '0';
+  flash.style.background = '#f4ecdd';
+  flash.style.opacity = '0';
+  flash.style.zIndex = '99999';
+  flash.style.pointerEvents = 'all';
+  flash.style.transition = 'opacity 0.65s cubic-bezier(0.22, 1, 0.36, 1)';
+  document.body.appendChild(flash);
+  requestAnimationFrame(() => { flash.style.opacity = '1'; });
+  if (typeof dive !== 'undefined') {
+    gsap.to(dive, { v: 1.2, duration: 0.8, ease: 'power3.in' });
+  }
+  setTimeout(() => {
+    window.top.location.href = '/dashboard';
+  }, 650);
+}
+
 let wheelLock = 0;
 addEventListener('wheel', e => {
   const now = performance.now(); if (now < wheelLock) return;
   const d = Math.abs(e.deltaX) > Math.abs(e.deltaY) ? e.deltaX : e.deltaY; if (Math.abs(d) < 12) return;
-  if (mode === 'hull' && !worldOpen) { hullGo(hullIdx + Math.sign(d)); wheelLock = now + 700; }
-  else if (mode === 'space' && state === 'voyage' && d > 0) { next(); wheelLock = now + 1400; }
+  if (state === 'hero' && d > 0) {
+    begin();
+    wheelLock = now + 1200;
+  } else if (mode === 'hull' && !worldOpen) {
+    if (hullIdx >= 2 && d > 0) {
+      enterWorkspace();
+      wheelLock = now + 2500;
+      return;
+    }
+    hullGo(hullIdx + Math.sign(d));
+    wheelLock = now + 700;
+  } else if (mode === 'space' && state === 'voyage') {
+    if (d > 0) {
+      next();
+      wheelLock = now + 1400;
+    } else if (d < 0 && legIdx > 1) {
+      goLeg(legIdx - 1);
+      wheelLock = now + 1400;
+    }
+  }
 }, { passive: true });
 let touch0 = null;
 addEventListener('touchstart', e => { touch0 = { x: e.touches[0].clientX, y: e.touches[0].clientY }; }, { passive: true });
 addEventListener('touchend', e => {
   if (!touch0) return; const t = e.changedTouches[0]; const dx = t.clientX - touch0.x, dy = t.clientY - touch0.y; touch0 = null;
-  if (mode === 'space' && state === 'voyage' && (dy < -50 || dx < -60)) next();
+  if (state === 'hero' && (dy < -50 || dx < -60)) begin();
+  else if (mode === 'space' && state === 'voyage' && (dy < -50 || dx < -60)) next();
+  else if (mode === 'hull' && !worldOpen && (dy < -50 || dx < -60)) {
+    if (hullIdx >= 2) enterWorkspace();
+    else hullGo(hullIdx + 1);
+  }
 }, { passive: true });
 addEventListener('keydown', e => {
   if (e.key === 'Escape') { if (worldOpen) closeWorld(); menu(false); return; }
   if (e.target.closest('input')) return;
-  if (mode === 'hull' && !worldOpen) { if (e.key === 'ArrowRight') hullGo(hullIdx + 1); if (e.key === 'ArrowLeft') hullGo(hullIdx - 1); if (e.key === 'Enter') openWorld(hullIdx); }
-  if (mode === 'space' && state === 'voyage' && (e.key === 'ArrowRight' || e.key === ' ' || e.key === 'ArrowDown')) { e.preventDefault(); next(); }
+  if (state === 'hero' && (e.key === 'ArrowRight' || e.key === ' ' || e.key === 'ArrowDown' || e.key === 'Enter')) {
+    e.preventDefault();
+    begin();
+    return;
+  }
+  if (mode === 'hull' && !worldOpen) {
+    if (e.key === 'ArrowRight' || e.key === 'ArrowDown') {
+      if (hullIdx >= 2) enterWorkspace();
+      else hullGo(hullIdx + 1);
+    }
+    if (e.key === 'ArrowLeft' || e.key === 'ArrowUp') hullGo(hullIdx - 1);
+    if (e.key === 'Enter') openWorld(hullIdx);
+  }
+  if (mode === 'space' && state === 'voyage' && (e.key === 'ArrowRight' || e.key === ' ' || e.key === 'ArrowDown')) {
+    e.preventDefault();
+    next();
+  }
 });
 $$('#hull .dots button').forEach((b, i) => b.addEventListener('click', () => hullGo(i)));
 $('#hull .arr.l').addEventListener('click', () => hullGo(hullIdx - 1));
-$('#hull .arr.r').addEventListener('click', () => hullGo(hullIdx + 1));
+$('#hull .arr.r').addEventListener('click', () => {
+  if (hullIdx >= 2) enterWorkspace();
+  else hullGo(hullIdx + 1);
+});
 $$('#hull .ex').forEach(b => b.addEventListener('click', () => { const i = +b.dataset.i; if (i !== hullIdx) return hullGo(i); openWorld(i); }));
 
 /* ------------------------------------------------ explore view */
@@ -1438,6 +1568,14 @@ function placeHullCopy() {
   const idx = clamp(Math.round(hullX), 0, 2);
   $$('#hull .dots button').forEach((b, i) => b.classList.toggle('on', i === idx));
   $('#hull .arr.l').style.opacity = hullIdx > 0 ? 1 : .3; $('#hull .arr.r').style.opacity = hullIdx < 2 ? 1 : .3;
+  const hintEl = $('#hintt');
+  if (hintEl) {
+    if (idx === 2) {
+      hintEl.innerHTML = '<span style="color:#ff6b4a;font-weight:600;letter-spacing:0.04em">Scroll down to enter workspace ↓</span>';
+    } else {
+      hintEl.textContent = 'Explore the evaluation journey';
+    }
+  }
 }
 
 /* ------------------------------------------------ boot */
@@ -1462,6 +1600,101 @@ window.__pv = {
   hull: () => { busy = false; if (state !== 'voyage') state = 'voyage'; toHull(true); },
   hullGo, openWorld, closeWorld, get state() { return { state, mode, legIdx, hullX, busy, fps }; },
 };
+</script>
+<script>
+(function() {
+  function getUser() {
+    try {
+      var raw = localStorage.getItem('visionguard_user_profile');
+      if (raw) {
+        var parsed = JSON.parse(raw);
+        if (parsed && parsed.id !== 'USR-2026-8819' && parsed.email !== 'chinmay.pralhad@visionguard.ai' && parsed.email !== 'chinmay@gmail.com') {
+          return parsed;
+        } else {
+          localStorage.removeItem('visionguard_user_profile');
+        }
+      }
+    } catch(e) {}
+    return null;
+  }
+
+  function renderProfile() {
+    var u = getUser();
+    var avatarEl = document.getElementById('uAvatar');
+    var dotEl = document.querySelector('.u-dot');
+    var popAvatarEl = document.getElementById('uPopAvatar');
+    var popNameEl = document.getElementById('uPopName');
+    var popRoleEl = document.getElementById('uPopRole');
+    var popEmailEl = document.getElementById('uPopEmail');
+    var popOrgEl = document.getElementById('uPopOrg');
+    var popStatusEl = document.getElementById('uPopStatus');
+    var logoutBtn = document.getElementById('uLogoutBtn');
+
+    if (u) {
+      var initial = (u.name || "U").charAt(0).toUpperCase();
+      if (avatarEl) avatarEl.textContent = initial;
+      if (dotEl) dotEl.style.background = '#10b981';
+      if (popAvatarEl) popAvatarEl.textContent = initial;
+      if (popNameEl) popNameEl.textContent = u.name;
+      if (popRoleEl) popRoleEl.textContent = u.role || 'Lead Reliability Engineer';
+      if (popEmailEl) popEmailEl.textContent = u.email;
+      if (popOrgEl) popOrgEl.textContent = u.organization || 'Autonomous Vision AI Lab';
+      if (popStatusEl) {
+        popStatusEl.textContent = '● Connected';
+        popStatusEl.style.color = '#34d399';
+      }
+      if (logoutBtn) {
+        logoutBtn.textContent = 'Sign out';
+        logoutBtn.style.background = 'rgba(239,68,68,.12)';
+        logoutBtn.style.color = '#f87171';
+        logoutBtn.style.border = '1px solid rgba(239,68,68,.25)';
+        logoutBtn.onclick = function() {
+          try { localStorage.removeItem('visionguard_user_profile'); } catch(e) {}
+          window.top.location.href = '/login';
+        };
+      }
+    } else {
+      if (avatarEl) avatarEl.textContent = '?';
+      if (dotEl) dotEl.style.background = '#64748b';
+      if (popAvatarEl) popAvatarEl.textContent = '?';
+      if (popNameEl) popNameEl.textContent = 'Guest User';
+      if (popRoleEl) popRoleEl.textContent = 'Profile: null';
+      if (popEmailEl) popEmailEl.textContent = 'Database: 0 records / null';
+      if (popOrgEl) popOrgEl.textContent = 'None';
+      if (popStatusEl) {
+        popStatusEl.textContent = '● Database: 0 / null';
+        popStatusEl.style.color = '#94a3b8';
+      }
+      if (logoutBtn) {
+        logoutBtn.textContent = 'Sign In / Register';
+        logoutBtn.style.background = 'rgba(255,107,74,0.18)';
+        logoutBtn.style.color = '#ff8a66';
+        logoutBtn.style.border = '1px solid rgba(255,107,74,0.35)';
+        logoutBtn.onclick = function() {
+          window.top.location.href = '/login';
+        };
+      }
+    }
+  }
+
+  var uBtn = document.getElementById('uBtn');
+  var uPopover = document.getElementById('uPopover');
+  if (uBtn && uPopover) {
+    uBtn.addEventListener('click', function(e) {
+      e.stopPropagation();
+      uPopover.classList.toggle('open');
+    });
+    document.addEventListener('click', function(e) {
+      if (!uPopover.contains(e.target) && e.target !== uBtn) {
+        uPopover.classList.remove('open');
+      }
+    });
+  }
+
+  renderProfile();
+  window.addEventListener('storage', renderProfile);
+  window.addEventListener('visionguard_user_changed', renderProfile);
+})();
 </script>
 </body>
 </html>
