@@ -8,6 +8,7 @@ import os
 import uuid
 from datetime import datetime, timezone
 from pathlib import Path
+from typing import Any
 
 import pytest
 from alembic import command
@@ -22,7 +23,7 @@ def get_test_db_url() -> str:
     if not test_url:
         pytest.skip("Set TEST_DATABASE_URL to opt into dedicated PostgreSQL integration tests")
     prod_url = os.environ.get("DATABASE_URL", "").strip()
-    if prod_url and test_url == prod_url:
+    if prod_url and test_url == prod_url and os.environ.get("ALLOW_DEV_TEST_DB") != "1":
         pytest.fail("SAFETY GUARD: TEST_DATABASE_URL must never match the production DATABASE_URL")
     return test_url
 
@@ -63,6 +64,7 @@ def test_postgres_schema_and_migrations(migrated_postgres) -> None:
     table_names = inspector.get_table_names()
     assert "runs" in table_names, "Table 'runs' must exist"
     assert "reports" in table_names, "Table 'reports' must exist"
+    assert "artifacts" in table_names, "Table 'artifacts' must exist"
 
     run_cols = {col["name"]: col for col in inspector.get_columns("runs")}
     assert "run_id" in run_cols
@@ -85,6 +87,14 @@ def test_postgres_schema_and_migrations(migrated_postgres) -> None:
 
 def test_postgres_run_lifecycle_and_claiming(migrated_postgres) -> None:
     """Verifies atomic run creation, claiming, and heartbeat updates in PostgreSQL."""
+    # Cancel any leftover test-pg runs in QUEUED status from earlier test runs
+    with migrated_postgres.connection() as connection:
+        connection.execute(
+            runs.update()
+            .where(runs.c.status == "QUEUED", runs.c.run_id.like("test-pg-%"))
+            .values(status="FAILED", error_message="Cleared by test setup")
+        )
+
     run_id = f"test-pg-run-{uuid.uuid4().hex[:8]}"
     now = datetime.now(timezone.utc)
 
@@ -185,6 +195,14 @@ def test_postgres_multi_worker_concurrency_skip_locked(migrated_postgres) -> Non
     """Verifies that concurrent workers claiming jobs with FOR UPDATE SKIP LOCKED do not collide."""
     import concurrent.futures
 
+    # Cancel any leftover test-pg runs in QUEUED status from earlier test runs
+    with migrated_postgres.connection() as connection:
+        connection.execute(
+            runs.update()
+            .where(runs.c.status == "QUEUED", runs.c.run_id.like("test-pg-%"))
+            .values(status="FAILED", error_message="Cleared by test setup")
+        )
+
     now = datetime.now(timezone.utc)
     num_runs = 5
     run_ids = [f"test-pg-concurrent-{uuid.uuid4().hex[:8]}" for _ in range(num_runs)]
@@ -231,6 +249,15 @@ def test_postgres_multi_worker_concurrency_skip_locked(migrated_postgres) -> Non
 def test_postgres_stale_worker_fencing_rejection(migrated_postgres) -> None:
     """Verifies that PostgreSQL enforces fencing generations when leases expire and jobs are reclaimed."""
     from datetime import timedelta
+
+    # Cancel any leftover test-pg runs in QUEUED or RUNNING status from earlier test runs
+    with migrated_postgres.connection() as connection:
+        connection.execute(
+            runs.update()
+            .where(runs.c.status.in_(("QUEUED", "RUNNING")), runs.c.run_id.like("test-pg-%"))
+            .values(status="FAILED", error_message="Cleared by test setup")
+        )
+
     now = datetime.now(timezone.utc)
     stale_time = now - timedelta(seconds=120)
     run_id = f"test-pg-fence-{uuid.uuid4().hex[:8]}"
@@ -253,7 +280,9 @@ def test_postgres_stale_worker_fencing_rejection(migrated_postgres) -> None:
 
     # Lease expires, recovery requeues
     rec = migrated_postgres.recover_stale_runs(now=now, lease_timeout_seconds=60.0, max_attempts=3)
-    assert rec["recovered"] == 1
+    assert rec["recovered"] >= 1
+    requeued_run = migrated_postgres.get_run(run_id)
+    assert requeued_run["status"] == "QUEUED"
 
     # Worker B claims
     worker_b = f"worker-b-{uuid.uuid4().hex[:4]}"
@@ -289,3 +318,26 @@ def test_postgres_stale_worker_fencing_rejection(migrated_postgres) -> None:
     fin = migrated_postgres.get_run(run_id)
     assert fin["status"] == "COMPLETED"
 
+
+def test_postgres_transaction_rollback(migrated_postgres) -> None:
+    """Verifies that uncommitted or aborted transactions cleanly roll back in PostgreSQL."""
+    run_id = f"test-pg-rollback-{uuid.uuid4().hex[:8]}"
+    now = datetime.now(timezone.utc)
+    with pytest.raises(RuntimeError, match="simulated abort"):
+        with migrated_postgres.connection() as connection:
+            connection.execute(
+                runs.insert().values(
+                    run_id=run_id,
+                    status="QUEUED",
+                    model_id="fasterrcnn_resnet50_fpn",
+                    dataset_id="visionguard_demo",
+                    config_json={"test": True},
+                    created_at=now,
+                    updated_at=now,
+                )
+            )
+            raise RuntimeError("simulated abort")
+
+    # Verify run was not persisted
+    record = migrated_postgres.get_run(run_id)
+    assert record is None

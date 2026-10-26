@@ -67,3 +67,9 @@ class RunArtifactsResponse(BaseModel):
     artifacts: list[ArtifactItem]
     total: int
 
+
+class ArtifactDownloadUrlResponse(BaseModel):
+    artifact_id: str
+    file_name: str
+    download_url: str
+    expires_in: int = 900

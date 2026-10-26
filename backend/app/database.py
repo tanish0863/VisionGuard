@@ -8,6 +8,7 @@ from uuid import uuid4
 from dotenv import load_dotenv
 from sqlalchemy import (
     JSON,
+    BigInteger,
     CheckConstraint,
     Column,
     DateTime,
@@ -81,6 +82,27 @@ reports = Table(
     Column("created_at", DateTime(timezone=True), nullable=False),
 )
 Index("ix_reports_created_at", reports.c.created_at)
+
+artifacts = Table(
+    "artifacts",
+    metadata,
+    Column("artifact_id", String(255), primary_key=True),
+    Column(
+        "run_id",
+        String(36),
+        ForeignKey("runs.run_id", ondelete="CASCADE"),
+        primary_key=True,
+        nullable=False,
+    ),
+    Column("artifact_type", String(64), nullable=False),
+    Column("file_name", String(255), nullable=False),
+    Column("object_key", String(1024), nullable=False, unique=True),
+    Column("content_type", String(128), nullable=False),
+    Column("size_bytes", BigInteger, nullable=True),
+    Column("created_at", DateTime(timezone=True), nullable=False),
+)
+Index("ix_artifacts_run_id", artifacts.c.run_id)
+Index("ix_artifacts_created_at", artifacts.c.created_at)
 
 TERMINAL_STATUSES = {"COMPLETED", "PARTIAL", "FAILED"}
 RUN_STATUSES = {"QUEUED", "RUNNING", *TERMINAL_STATUSES}
@@ -533,3 +555,87 @@ class RunDatabase:
             "report": row["report_json"],
             "report_json": row["report_json"],
         }
+
+    def record_artifact(
+        self,
+        run_id: str,
+        artifact_type: str,
+        file_name: str,
+        object_key: str,
+        content_type: str,
+        size_bytes: int | None = None,
+        artifact_id: str | None = None,
+        created_at: Any = None,
+    ) -> dict[str, Any]:
+        """Insert or update artifact metadata in PostgreSQL."""
+        aid = artifact_id or str(uuid4())
+        ts = created_at or func.now()
+        with self.connection() as connection:
+            existing = connection.execute(
+                select(artifacts.c.artifact_id).where(
+                    artifacts.c.run_id == run_id,
+                    artifacts.c.artifact_id == aid,
+                )
+            ).scalar_one_or_none()
+            if existing is not None:
+                connection.execute(
+                    artifacts.update()
+                    .where(
+                        artifacts.c.run_id == run_id,
+                        artifacts.c.artifact_id == aid,
+                    )
+                    .values(
+                        artifact_type=artifact_type,
+                        file_name=file_name,
+                        object_key=object_key,
+                        content_type=content_type,
+                        size_bytes=size_bytes,
+                        created_at=ts,
+                    )
+                )
+            else:
+                connection.execute(
+                    artifacts.insert().values(
+                        artifact_id=aid,
+                        run_id=run_id,
+                        artifact_type=artifact_type,
+                        file_name=file_name,
+                        object_key=object_key,
+                        content_type=content_type,
+                        size_bytes=size_bytes,
+                        created_at=ts,
+                    )
+                )
+        return {
+            "artifact_id": aid,
+            "run_id": run_id,
+            "artifact_type": artifact_type,
+            "file_name": file_name,
+            "object_key": object_key,
+            "content_type": content_type,
+            "size_bytes": size_bytes,
+            "created_at": ts,
+        }
+
+    def get_artifact(self, run_id: str, artifact_id: str) -> dict[str, Any] | None:
+        """Find artifact metadata by run_id and artifact_id."""
+        with self.connection() as connection:
+            row = connection.execute(
+                select(artifacts).where(
+                    artifacts.c.run_id == run_id,
+                    artifacts.c.artifact_id == artifact_id,
+                )
+            ).mappings().first()
+        if row is None:
+            return None
+        return dict(row)
+
+    def list_artifacts_for_run(self, run_id: str) -> list[dict[str, Any]]:
+        """List all artifact metadata records for a run."""
+        with self.connection() as connection:
+            rows = connection.execute(
+                select(artifacts)
+                .where(artifacts.c.run_id == run_id)
+                .order_by(artifacts.c.created_at.asc())
+            ).mappings().all()
+        return [dict(r) for r in rows]

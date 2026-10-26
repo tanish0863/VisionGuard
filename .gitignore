@@ -82,3 +82,8 @@ dist/
 Thumbs.db
 desktop.ini
 $RECYCLE.BIN/
+
+# Node & Virtualization
+node_modules/
+*.vhdx
+/VisionGuard

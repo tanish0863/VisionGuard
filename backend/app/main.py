@@ -19,6 +19,13 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 
 from backend.app.artifacts import get_artifact_content, list_run_artifacts
+from backend.app.storage import (
+    ArtifactStorage,
+    StorageObjectNotFoundError,
+    StorageSecurityError,
+    get_artifact_storage,
+    validate_storage_key,
+)
 from backend.app.config import (
     ALLOW_CORS_CREDENTIALS,
     ALLOWED_CORS_HEADERS,
@@ -37,6 +44,7 @@ from backend.app.execution import (
     JobDispatcher,
 )
 from backend.app.schemas import (
+    ArtifactDownloadUrlResponse,
     DatasetsResponse,
     ModelsResponse,
     ReportResponse,
@@ -62,6 +70,7 @@ def create_app(
     supported_models: list[str] | None = None,
     cors_origins: list[str] | None = None,
     dispatcher: JobDispatcher | None = None,
+    storage: ArtifactStorage | None = None,
 ) -> FastAPI:
     models = configured_models() if supported_models is None else supported_models
     origins = configured_cors_origins() if cors_origins is None else cors_origins
@@ -77,6 +86,8 @@ def create_app(
         from backend.app.execution import WorkerCliDispatcher
         resolved_dispatcher = WorkerCliDispatcher()
 
+    resolved_storage: ArtifactStorage = storage if storage is not None else get_artifact_storage()
+
     @asynccontextmanager
     async def lifespan(application: FastAPI):
         run_database = database or (
@@ -88,6 +99,7 @@ def create_app(
         application.state.dispatcher = resolved_dispatcher
         application.state.dispatcher_mode = dispatcher_mode
         application.state.evaluator = evaluator
+        application.state.storage = resolved_storage
         try:
             run_database.check_connection()
             run_database.fail_incomplete_runs(utc_now())
@@ -264,7 +276,10 @@ def create_app(
                 status_code=409,
                 detail=f"Artifacts are not available for a {run['status']} run",
             )
-        artifacts = list_run_artifacts(run_id, report_data)
+        storage_inst = getattr(request.app.state, "storage", None)
+        artifacts = list_run_artifacts(
+            run_id, report_data, storage=storage_inst, database=database_inst
+        )
         return RunArtifactsResponse(
             run_id=run_id, artifacts=artifacts, total=len(artifacts)
         )
@@ -281,9 +296,10 @@ def create_app(
                 status_code=409,
                 detail=f"Artifacts are not available for a {run['status']} run",
             )
+        storage_inst = getattr(request.app.state, "storage", None)
         try:
             content, mime_type = get_artifact_content(
-                run_id, artifact_id, report_data
+                run_id, artifact_id, report_data, storage=storage_inst, database=database_inst
             )
         except NotImplementedError as exc:
             raise HTTPException(status_code=404, detail=str(exc))
@@ -298,6 +314,74 @@ def create_app(
             content=content,
             media_type=mime_type,
             headers={"Cache-Control": "public, max-age=3600"},
+        )
+
+    @application.get("/api/v1/artifacts/{artifact_path:path}")
+    def get_raw_artifact(artifact_path: str, request: Request) -> Response:
+        """Stream artifact by storage object key (used for local filesystem storage URLs)."""
+        storage_inst = getattr(request.app.state, "storage", None) or get_artifact_storage()
+        try:
+            valid_key = validate_storage_key(artifact_path)
+            content, mime_type = storage_inst.get_object(valid_key)
+            return Response(
+                content=content,
+                media_type=mime_type,
+                headers={"Cache-Control": "public, max-age=3600"},
+            )
+        except (StorageObjectNotFoundError, FileNotFoundError):
+            raise HTTPException(status_code=404, detail="Artifact not found")
+        except StorageSecurityError as exc:
+            raise HTTPException(status_code=403, detail=str(exc))
+        except Exception as exc:
+            logger.error("Failed retrieving raw artifact '%s': %s", artifact_path, exc)
+            raise HTTPException(status_code=500, detail="Internal storage error")
+
+
+    @application.get(
+        "/api/v1/runs/{run_id}/artifacts/{artifact_id}/download-url",
+        response_model=ArtifactDownloadUrlResponse,
+    )
+    @application.get(
+        "/api/runs/{run_id}/artifacts/{artifact_id}/download-url",
+        response_model=ArtifactDownloadUrlResponse,
+        include_in_schema=False,
+    )
+    def get_artifact_download_url(
+        run_id: str,
+        artifact_id: str,
+        request: Request,
+        expires_in: int = Query(default=900, ge=60, le=86400),
+    ) -> ArtifactDownloadUrlResponse:
+        database_inst: RunDatabase = request.app.state.database
+        run = database_inst.get_run(run_id)
+        if run is None:
+            raise HTTPException(status_code=404, detail="Evaluation run not found")
+
+        # Check database for existing artifact metadata record
+        art_record = database_inst.get_artifact(run_id, artifact_id)
+        if art_record:
+            object_key = art_record["object_key"]
+            file_name = art_record["file_name"]
+        else:
+            try:
+                valid_art_id = validate_storage_key(artifact_id)
+            except Exception as val_exc:
+                raise HTTPException(status_code=400, detail=str(val_exc))
+            object_key = f"runs/{run_id}/{valid_art_id}.jpg"
+            file_name = f"{valid_art_id}.jpg"
+
+        storage_inst = getattr(request.app.state, "storage", None) or get_artifact_storage()
+        try:
+            download_url = storage_inst.generate_presigned_url(object_key, expires_in=expires_in)
+        except Exception as exc:
+            logger.error("Failed to generate presigned download URL for key '%s': %s", object_key, exc)
+            raise HTTPException(status_code=500, detail="Failed to generate download URL")
+
+        return ArtifactDownloadUrlResponse(
+            artifact_id=artifact_id,
+            file_name=file_name,
+            download_url=download_url,
+            expires_in=expires_in,
         )
 
     @application.post("/api/v1/runs/recover-stale")

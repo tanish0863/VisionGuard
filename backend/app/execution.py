@@ -100,6 +100,7 @@ def execute_evaluation_job(
     evaluator: Callable[..., EvaluationReport] | None = None,
     worker_id: str | None = None,
     heartbeat_interval: float = 10.0,
+    storage: Any | None = None,
 ) -> ExecutionResult:
     """Execute a single evaluation job by run_id using the configured database.
 
@@ -173,6 +174,13 @@ def execute_evaluation_job(
         if report.run_id != run_id:
             raise ValueError(f"Evaluator report run_id '{report.run_id}' does not match requested run_id '{run_id}'")
         report_json = json.loads(report.model_dump_json())
+
+        # Upload generated artifacts to distributed storage (Backblaze B2 / S3 / local)
+        try:
+            from backend.app.artifacts import upload_run_artifacts
+            upload_run_artifacts(run_id, report_json, storage=storage, database=database)
+        except Exception as upload_exc:
+            logger.warning("Artifact upload for run %s encountered an issue: %s", run_id, upload_exc)
     except Exception as exc:
         logger.exception("Evaluation failed for run %s: %s", run_id, exc)
         safe_msg = "Evaluation failed before a valid report was produced"

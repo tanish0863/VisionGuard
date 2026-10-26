@@ -1029,6 +1029,20 @@ export function Failures({ id }: { id: string }) {
         ctx.fillText(label, x1 + 4, Math.max(15, y1 - 5));
       });
     };
+    cleanImg.onerror = () => {
+      const canvas = cleanCanvasRef.current;
+      if (!canvas) return;
+      canvas.width = 640;
+      canvas.height = 360;
+      const ctx = canvas.getContext("2d");
+      if (!ctx) return;
+      ctx.fillStyle = "#1e293b";
+      ctx.fillRect(0, 0, 640, 360);
+      ctx.fillStyle = "#94a3b8";
+      ctx.font = "14px sans-serif";
+      ctx.textAlign = "center";
+      ctx.fillText("Baseline image unavailable", 320, 180);
+    };
 
     // 2. Draw Corrupted Image with Orange/Red Detections
     const corrImg = new window.Image();
@@ -1067,6 +1081,20 @@ export function Failures({ id }: { id: string }) {
         ctx.fillStyle = "#ffffff";
         ctx.fillText(label, x1 + 4, Math.max(15, y1 - 5));
       });
+    };
+    corrImg.onerror = () => {
+      const canvas = corruptedCanvasRef.current;
+      if (!canvas) return;
+      canvas.width = 640;
+      canvas.height = 360;
+      const ctx = canvas.getContext("2d");
+      if (!ctx) return;
+      ctx.fillStyle = "#1e293b";
+      ctx.fillRect(0, 0, 640, 360);
+      ctx.fillStyle = "#94a3b8";
+      ctx.font = "14px sans-serif";
+      ctx.textAlign = "center";
+      ctx.fillText("Corrupted condition image unavailable", 320, 180);
     };
   }, [report, selectedImageId, selectedConditionIdx, id]);
 

@@ -310,7 +310,7 @@ def test_dotenv_file_is_supported(tmp_path: Path, monkeypatch: pytest.MonkeyPatc
 def test_database_connectivity_and_tables(tmp_path: Path) -> None:
     database = make_test_database(tmp_path / "connectivity.sqlite3")
     database.check_connection()
-    assert set(metadata.tables) == {"runs", "reports"}
+    assert set(metadata.tables) == {"runs", "reports", "artifacts"}
     assert runs.c.config_json.type.__class__.__name__ in {"JSON", "JSONB"}
     database.dispose()
 

@@ -68,3 +68,47 @@ The current implementation uses a database-backed state machine with `JobDispatc
 1. **Phase 1 (Current):** Database-backed job queue with `BackgroundTasksDispatcher` or CLI worker polling.
 2. **Phase 2 (Cloud GPU Worker):** Replace polling with a distributed message broker (e.g. AWS SQS, Celery, or Redis Streams). The API dispatcher simply pushes `{run_id}` to the message queue, and the remote GPU worker invokes `execute_evaluation_job(run_id)`.
 3. **Zero Frontend Impact:** Because the frontend polls `GET /api/v1/runs/{run_id}` against the shared PostgreSQL database, worker architecture changes are completely transparent to clients.
+
+---
+
+## Docker Worker Specifications & Staging Verification
+
+### Container Runtime Specification
+- **Base Image:** `nvidia/cuda:12.4.1-runtime-ubuntu22.04` (with `ARG BASE_IMAGE` parameterization)
+- **Python:** 3.12 (PPA `deadsnakes/ppa`)
+- **PyTorch:** `torch==2.6.0+cu124`
+- **Torchvision:** `torchvision==0.21.0+cu124`
+- **Wheel Index:** `https://download.pytorch.org/whl/cu124`
+- **Healthcheck:** Port `7860` (`curl -f http://localhost:${PORT:-7860}/health || exit 1`)
+- **Execution User:** `appuser` (UID 1000, non-root)
+
+### Dependency Separation
+- Backend API dependencies (`fastapi`, `uvicorn`, `pytest`, `httpx`) are isolated in `backend/requirements.txt` and excluded from the ML worker.
+- Worker ML and storage requirements are self-contained in `backend/requirements-ml.txt` (`torch`, `torchvision`, `numpy`, `pillow`, `opencv-python-headless`, `scipy`, `pydantic`, `boto3`, `botocore`, `sqlalchemy`, `alembic`, `psycopg[binary]`, `python-dotenv`).
+
+### Building for Staging
+1. **Local Build (Reusing Cached GPU Base):**
+   ```powershell
+   docker build --progress=plain --build-arg BASE_IMAGE=visionguard-worker:latest -f Dockerfile.worker -t visionguard-worker:test-staging .
+   ```
+2. **Cloud / Hugging Face Spaces Build (From Upstream CUDA):**
+   ```powershell
+   docker build --progress=plain -f Dockerfile.worker -t visionguard-worker:test-staging .
+   ```
+
+### Verifying the Staging Worker Image
+```powershell
+# Verify image metadata and non-root user
+docker image inspect visionguard-worker:test-staging --format "ID={{.Id}} Size={{.Size}} User={{.Config.User}}"
+
+# Verify Python, PyTorch, Torchvision, and CUDA availability in isolation
+docker run --rm visionguard-worker:test-staging python -c "import torch, torchvision; print('Torch:', torch.__version__, 'CUDA:', torch.version.cuda, 'Torchvision:', torchvision.__version__)"
+
+# Verify worker entrypoint help
+docker run --rm visionguard-worker:test-staging python -m backend.app.worker --help
+```
+
+### Storage & RAM Considerations
+- Extracting CUDA 12.4 + PyTorch wheels unpacks ~12 GB of uncompressed binaries.
+- Ensure the Docker host disk has at least 25 GB of free space and 4+ GB of free memory before performing fresh builds from `nvidia/cuda`.
+- For Docker Desktop on WSL2, verify the actual WSL VHDX drive (`CustomWslDistroDir`) has sufficient free space.

@@ -26,3 +26,9 @@ for _p in [
 ]:
     if _p not in sys.path:
         sys.path.insert(0, _p)
+
+try:
+    from dotenv import load_dotenv
+    load_dotenv(_PROJECT_ROOT / ".env")
+except ImportError:
+    pass

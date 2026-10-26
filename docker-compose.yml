@@ -2,24 +2,56 @@
 # VisionGuard — Production / Staging Multi-Service Docker Compose
 # =============================================================================
 services:
+  migrate:
+    build:
+      context: .
+      dockerfile: Dockerfile.api
+    command: ["alembic", "-c", "/app/backend/alembic.ini", "upgrade", "head"]
+    environment:
+      - DATABASE_URL=${DATABASE_URL}
+    restart: "no"
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+
   api:
     build:
       context: .
       dockerfile: Dockerfile.api
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
     ports:
       - "8000:8000"
     environment:
       - DATABASE_URL=${DATABASE_URL}
       - VISIONGUARD_DISPATCHER=worker
       - VISIONGUARD_CORS_ORIGINS=http://localhost:5173,http://localhost:3000
+      - VISIONGUARD_STORAGE_BACKEND=${VISIONGUARD_STORAGE_BACKEND:-local}
+      - VISIONGUARD_STORAGE_BUCKET=${VISIONGUARD_STORAGE_BUCKET:-}
+      - VISIONGUARD_STORAGE_ENDPOINT=${VISIONGUARD_STORAGE_ENDPOINT:-}
+      - VISIONGUARD_STORAGE_ACCESS_KEY_ID=${VISIONGUARD_STORAGE_ACCESS_KEY_ID:-}
+      - VISIONGUARD_STORAGE_SECRET_ACCESS_KEY=${VISIONGUARD_STORAGE_SECRET_ACCESS_KEY:-}
+      - VISIONGUARD_STORAGE_REGION=${VISIONGUARD_STORAGE_REGION:-auto}
+      - VISIONGUARD_STORAGE_PREFIX=${VISIONGUARD_STORAGE_PREFIX:-}
     volumes:
       - run-artifacts:/app/backend/artifacts
     restart: unless-stopped
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
 
   worker:
     build:
       context: .
       dockerfile: Dockerfile.worker
+    depends_on:
+      api:
+        condition: service_healthy
     deploy:
       resources:
         reservations:
@@ -31,9 +63,41 @@ services:
       - DATABASE_URL=${DATABASE_URL}
       - VISIONGUARD_LEASE_TIMEOUT_SECONDS=60
       - VISIONGUARD_MAX_ATTEMPTS=3
+      - VISIONGUARD_STORAGE_BACKEND=${VISIONGUARD_STORAGE_BACKEND:-local}
+      - VISIONGUARD_STORAGE_BUCKET=${VISIONGUARD_STORAGE_BUCKET:-}
+      - VISIONGUARD_STORAGE_ENDPOINT=${VISIONGUARD_STORAGE_ENDPOINT:-}
+      - VISIONGUARD_STORAGE_ACCESS_KEY_ID=${VISIONGUARD_STORAGE_ACCESS_KEY_ID:-}
+      - VISIONGUARD_STORAGE_SECRET_ACCESS_KEY=${VISIONGUARD_STORAGE_SECRET_ACCESS_KEY:-}
+      - VISIONGUARD_STORAGE_REGION=${VISIONGUARD_STORAGE_REGION:-auto}
+      - VISIONGUARD_STORAGE_PREFIX=${VISIONGUARD_STORAGE_PREFIX:-}
     volumes:
       - run-artifacts:/app/backend/artifacts
+      - model-cache:/home/appuser/.cache
     restart: unless-stopped
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+  frontend:
+    build:
+      context: .
+      dockerfile: Dockerfile.frontend
+    depends_on:
+      api:
+        condition: service_healthy
+    ports:
+      - "5173:5173"
+    environment:
+      - VITE_API_BASE_URL=http://localhost:8000
+    restart: unless-stopped
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
 
 volumes:
   run-artifacts:
+  model-cache:

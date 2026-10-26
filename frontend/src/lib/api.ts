@@ -149,6 +149,16 @@ export const api = {
     return `${API_BASE_URL}/api/v1/runs/${runId}/artifacts/${encodeURIComponent(artifactId)}`;
   },
 
+  async getArtifactDownloadUrl(
+    runId: string,
+    artifactId: string,
+    expiresIn: number = 900
+  ): Promise<{ artifact_id: string; file_name: string; download_url: string; expires_in: number }> {
+    return request<{ artifact_id: string; file_name: string; download_url: string; expires_in: number }>(
+      `/api/v1/runs/${runId}/artifacts/${encodeURIComponent(artifactId)}/download-url?expires_in=${expiresIn}`
+    );
+  },
+
   async fetchArtifactBlob(runId: string, artifactId: string): Promise<Blob> {
     const url = this.getArtifactUrl(runId, artifactId);
     let resp: Response;

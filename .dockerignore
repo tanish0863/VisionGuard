@@ -1,0 +1,50 @@
+# =============================================================================
+# VisionGuard — Docker Build Ignore Rules
+# =============================================================================
+
+# Virtual environments
+.venv*
+venv*
+ENV/
+env/
+
+# Version control & project drafts
+.git
+.gitignore
+VisionGuard
+
+# Secrets & environment configurations
+.env
+.env.*
+!.env.example
+
+# Python bytecode & caches
+__pycache__/
+*.py[cod]
+*$py.class
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+htmlcov/
+*.log
+
+# Local data & temporary test files
+artifacts/
+scratch/
+temp_dataset/
+*.vhdx
+
+# Frontend builds, caches & dependencies
+frontend/node_modules/
+frontend/dist/
+frontend/.output/
+frontend/playwright-report/
+frontend/test-results/
+frontend/.lovable/
+
+# IDE & Editor files
+.vscode/
+.idea/
+*.swp
+*.swo
