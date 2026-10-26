@@ -1,0 +1,10 @@
+services:
+  backend:
+    build: ./backend
+    ports: ["8000:8000"]
+    volumes: ["./backend/data:/app/data", "./backend/yolov8n.pt:/app/yolov8n.pt"]
+  frontend:
+    build: ./frontend
+    ports: ["5173:5173"]
+    environment: { API_URL: "http://backend:8000" }
+    depends_on: [backend]
