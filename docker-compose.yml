@@ -1,0 +1,39 @@
+# =============================================================================
+# VisionGuard — Production / Staging Multi-Service Docker Compose
+# =============================================================================
+services:
+  api:
+    build:
+      context: .
+      dockerfile: Dockerfile.api
+    ports:
+      - "8000:8000"
+    environment:
+      - DATABASE_URL=${DATABASE_URL}
+      - VISIONGUARD_DISPATCHER=worker
+      - VISIONGUARD_CORS_ORIGINS=http://localhost:5173,http://localhost:3000
+    volumes:
+      - run-artifacts:/app/backend/artifacts
+    restart: unless-stopped
+
+  worker:
+    build:
+      context: .
+      dockerfile: Dockerfile.worker
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: 1
+              capabilities: [gpu]
+    environment:
+      - DATABASE_URL=${DATABASE_URL}
+      - VISIONGUARD_LEASE_TIMEOUT_SECONDS=60
+      - VISIONGUARD_MAX_ATTEMPTS=3
+    volumes:
+      - run-artifacts:/app/backend/artifacts
+    restart: unless-stopped
+
+volumes:
+  run-artifacts:

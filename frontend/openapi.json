@@ -1,0 +1,1594 @@
+{
+  "openapi": "3.1.0",
+  "info": {
+    "title": "VisionGuard API",
+    "description": "Backend API for the VisionGuard model evaluation platform",
+    "version": "0.1.0"
+  },
+  "paths": {
+    "/": {
+      "get": {
+        "summary": "Home",
+        "operationId": "home__get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": {
+                    "type": "string"
+                  },
+                  "type": "object",
+                  "title": "Response Home  Get"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/health": {
+      "get": {
+        "summary": "Health Check",
+        "operationId": "health_check_health_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": {
+                    "type": "string"
+                  },
+                  "type": "object",
+                  "title": "Response Health Check Health Get"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/models": {
+      "get": {
+        "summary": "List Models",
+        "operationId": "list_models_api_v1_models_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ModelsResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/datasets": {
+      "get": {
+        "summary": "List Datasets",
+        "operationId": "list_datasets_api_v1_datasets_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DatasetsResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/runs": {
+      "post": {
+        "summary": "Create Run",
+        "operationId": "create_run_api_v1_runs_post",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RunCreateRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "202": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RunResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "get": {
+        "summary": "List Runs",
+        "operationId": "list_runs_api_v1_runs_get",
+        "parameters": [
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "maximum": 100,
+              "minimum": 1,
+              "default": 50,
+              "title": "Limit"
+            }
+          },
+          {
+            "name": "offset",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "minimum": 0,
+              "default": 0,
+              "title": "Offset"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RunListResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/runs/{run_id}": {
+      "get": {
+        "summary": "Get Run",
+        "operationId": "get_run_api_v1_runs__run_id__get",
+        "parameters": [
+          {
+            "name": "run_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Run Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RunResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/runs/{run_id}/report": {
+      "get": {
+        "summary": "Get Report",
+        "operationId": "get_report_api_v1_runs__run_id__report_get",
+        "parameters": [
+          {
+            "name": "run_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Run Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ReportResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/runs/{run_id}/artifacts": {
+      "get": {
+        "summary": "List Artifacts",
+        "operationId": "list_artifacts_api_v1_runs__run_id__artifacts_get",
+        "parameters": [
+          {
+            "name": "run_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Run Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RunArtifactsResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/runs/{run_id}/artifacts/{artifact_id}": {
+      "get": {
+        "summary": "Get Artifact",
+        "operationId": "get_artifact_api_v1_runs__run_id__artifacts__artifact_id__get",
+        "parameters": [
+          {
+            "name": "run_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Run Id"
+            }
+          },
+          {
+            "name": "artifact_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Artifact Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/runs/recover-stale": {
+      "post": {
+        "summary": "Recover Stale",
+        "operationId": "recover_stale_api_v1_runs_recover_stale_post",
+        "parameters": [
+          {
+            "name": "lease_timeout",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "number",
+              "maximum": 3600.0,
+              "minimum": 5.0,
+              "default": 60.0,
+              "title": "Lease Timeout"
+            }
+          },
+          {
+            "name": "max_attempts",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "maximum": 10,
+              "minimum": 1,
+              "default": 3,
+              "title": "Max Attempts"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": {
+                    "type": "integer"
+                  },
+                  "title": "Response Recover Stale Api V1 Runs Recover Stale Post"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "schemas": {
+      "ArtifactItem": {
+        "properties": {
+          "artifact_id": {
+            "type": "string",
+            "title": "Artifact Id"
+          },
+          "run_id": {
+            "type": "string",
+            "title": "Run Id"
+          },
+          "image_id": {
+            "type": "string",
+            "title": "Image Id"
+          },
+          "artifact_type": {
+            "type": "string",
+            "title": "Artifact Type"
+          },
+          "corruption": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Corruption"
+          },
+          "severity": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Severity"
+          },
+          "mime_type": {
+            "type": "string",
+            "title": "Mime Type",
+            "default": "image/jpeg"
+          },
+          "available": {
+            "type": "boolean",
+            "title": "Available",
+            "default": true
+          },
+          "details": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Details"
+          }
+        },
+        "type": "object",
+        "required": [
+          "artifact_id",
+          "run_id",
+          "image_id",
+          "artifact_type"
+        ],
+        "title": "ArtifactItem"
+      },
+      "ConditionResult": {
+        "properties": {
+          "corruption": {
+            "$ref": "#/components/schemas/CorruptionKind"
+          },
+          "severity": {
+            "type": "integer",
+            "title": "Severity"
+          },
+          "seed": {
+            "type": "integer",
+            "title": "Seed"
+          },
+          "metrics": {
+            "$ref": "#/components/schemas/MetricSet"
+          },
+          "per_image": {
+            "items": {
+              "$ref": "#/components/schemas/ImageConditionResult"
+            },
+            "type": "array",
+            "title": "Per Image"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "corruption",
+          "severity",
+          "seed",
+          "metrics",
+          "per_image"
+        ],
+        "title": "ConditionResult"
+      },
+      "CorruptionKind": {
+        "type": "string",
+        "enum": [
+          "blur",
+          "low_light",
+          "gaussian_noise"
+        ],
+        "title": "CorruptionKind"
+      },
+      "CorruptionSpec": {
+        "properties": {
+          "kind": {
+            "$ref": "#/components/schemas/CorruptionKind"
+          },
+          "severities": {
+            "items": {
+              "type": "integer"
+            },
+            "type": "array",
+            "minItems": 1,
+            "title": "Severities"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "kind",
+          "severities"
+        ],
+        "title": "CorruptionSpec"
+      },
+      "DatasetInfo": {
+        "properties": {
+          "dataset_id": {
+            "type": "string",
+            "title": "Dataset Id"
+          },
+          "name": {
+            "type": "string",
+            "title": "Name"
+          },
+          "image_count": {
+            "type": "integer",
+            "minimum": 0.0,
+            "title": "Image Count"
+          },
+          "has_ground_truth": {
+            "type": "boolean",
+            "title": "Has Ground Truth"
+          },
+          "license": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "License"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "dataset_id",
+          "name",
+          "image_count",
+          "has_ground_truth"
+        ],
+        "title": "DatasetInfo"
+      },
+      "DatasetMetadata": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "title": "Id"
+          },
+          "name": {
+            "type": "string",
+            "title": "Name"
+          },
+          "description": {
+            "type": "string",
+            "title": "Description"
+          },
+          "image_count": {
+            "type": "integer",
+            "title": "Image Count"
+          },
+          "has_ground_truth": {
+            "type": "boolean",
+            "title": "Has Ground Truth",
+            "default": false
+          },
+          "supported": {
+            "type": "boolean",
+            "title": "Supported",
+            "default": true
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "name",
+          "description",
+          "image_count"
+        ],
+        "title": "DatasetMetadata"
+      },
+      "DatasetsResponse": {
+        "properties": {
+          "datasets": {
+            "items": {
+              "$ref": "#/components/schemas/DatasetMetadata"
+            },
+            "type": "array",
+            "title": "Datasets"
+          }
+        },
+        "type": "object",
+        "required": [
+          "datasets"
+        ],
+        "title": "DatasetsResponse"
+      },
+      "EvalConfig": {
+        "properties": {
+          "model_id": {
+            "type": "string",
+            "minLength": 1,
+            "title": "Model Id"
+          },
+          "dataset_id": {
+            "type": "string",
+            "minLength": 1,
+            "title": "Dataset Id"
+          },
+          "corruptions": {
+            "items": {
+              "$ref": "#/components/schemas/CorruptionSpec"
+            },
+            "type": "array",
+            "minItems": 1,
+            "title": "Corruptions"
+          },
+          "seed": {
+            "type": "integer",
+            "title": "Seed",
+            "default": 0
+          },
+          "score_threshold": {
+            "type": "number",
+            "maximum": 1.0,
+            "minimum": 0.0,
+            "title": "Score Threshold",
+            "default": 0.5
+          },
+          "match_iou_threshold": {
+            "type": "number",
+            "maximum": 1.0,
+            "exclusiveMinimum": 0.0,
+            "title": "Match Iou Threshold",
+            "default": 0.5
+          },
+          "max_images": {
+            "anyOf": [
+              {
+                "type": "integer",
+                "minimum": 1.0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Max Images"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "model_id",
+          "dataset_id",
+          "corruptions"
+        ],
+        "title": "EvalConfig"
+      },
+      "EvaluationReport": {
+        "properties": {
+          "schema_version": {
+            "type": "string",
+            "title": "Schema Version",
+            "default": "1.0.0"
+          },
+          "is_fixture": {
+            "type": "boolean",
+            "title": "Is Fixture",
+            "default": false
+          },
+          "run_id": {
+            "type": "string",
+            "title": "Run Id"
+          },
+          "status": {
+            "$ref": "#/components/schemas/RunStatus"
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Created At"
+          },
+          "model": {
+            "$ref": "#/components/schemas/ModelInfo"
+          },
+          "dataset": {
+            "$ref": "#/components/schemas/DatasetInfo"
+          },
+          "config": {
+            "$ref": "#/components/schemas/EvalConfig"
+          },
+          "clean_predictions": {
+            "items": {
+              "$ref": "#/components/schemas/ImagePredictions"
+            },
+            "type": "array",
+            "title": "Clean Predictions"
+          },
+          "conditions": {
+            "items": {
+              "$ref": "#/components/schemas/ConditionResult"
+            },
+            "type": "array",
+            "title": "Conditions"
+          },
+          "failures": {
+            "items": {
+              "$ref": "#/components/schemas/FailureInfo"
+            },
+            "type": "array",
+            "title": "Failures"
+          },
+          "errors": {
+            "items": {
+              "$ref": "#/components/schemas/ImageError"
+            },
+            "type": "array",
+            "title": "Errors"
+          },
+          "ground_truth_metrics": {
+            "anyOf": [
+              {
+                "additionalProperties": {
+                  "type": "number"
+                },
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Ground Truth Metrics"
+          },
+          "software_versions": {
+            "additionalProperties": {
+              "type": "string"
+            },
+            "type": "object",
+            "title": "Software Versions"
+          },
+          "metric_definitions": {
+            "additionalProperties": {
+              "type": "string"
+            },
+            "type": "object",
+            "title": "Metric Definitions"
+          },
+          "limitations": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Limitations"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "run_id",
+          "status",
+          "created_at",
+          "model",
+          "dataset",
+          "config",
+          "clean_predictions",
+          "conditions",
+          "failures"
+        ],
+        "title": "EvaluationReport"
+      },
+      "FailureInfo": {
+        "properties": {
+          "image_id": {
+            "type": "string",
+            "title": "Image Id"
+          },
+          "corruption": {
+            "$ref": "#/components/schemas/CorruptionKind"
+          },
+          "severity": {
+            "type": "integer",
+            "title": "Severity"
+          },
+          "failure_type": {
+            "$ref": "#/components/schemas/FailureType"
+          },
+          "clean_index": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Clean Index"
+          },
+          "corrupted_index": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Corrupted Index"
+          },
+          "clean_prediction": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/Prediction"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "corrupted_prediction": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/Prediction"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "iou": {
+            "anyOf": [
+              {
+                "type": "number",
+                "maximum": 1.0,
+                "minimum": 0.0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Iou"
+          },
+          "details": {
+            "type": "string",
+            "title": "Details"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "image_id",
+          "corruption",
+          "severity",
+          "failure_type",
+          "details"
+        ],
+        "title": "FailureInfo"
+      },
+      "FailureType": {
+        "type": "string",
+        "enum": [
+          "MISSING_AFTER_CORRUPTION",
+          "NEW_AFTER_CORRUPTION",
+          "CLASS_FLIP",
+          "LOCALIZATION_SHIFT",
+          "CONFIDENCE_DROP"
+        ],
+        "title": "FailureType"
+      },
+      "HTTPValidationError": {
+        "properties": {
+          "detail": {
+            "items": {
+              "$ref": "#/components/schemas/ValidationError"
+            },
+            "type": "array",
+            "title": "Detail"
+          }
+        },
+        "type": "object",
+        "title": "HTTPValidationError"
+      },
+      "ImageConditionResult": {
+        "properties": {
+          "image_id": {
+            "type": "string",
+            "title": "Image Id"
+          },
+          "corrupted_image_path": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Corrupted Image Path"
+          },
+          "predictions": {
+            "items": {
+              "$ref": "#/components/schemas/Prediction"
+            },
+            "type": "array",
+            "title": "Predictions"
+          },
+          "matches": {
+            "items": {
+              "$ref": "#/components/schemas/MatchRecord"
+            },
+            "type": "array",
+            "title": "Matches"
+          },
+          "unmatched_clean_indices": {
+            "items": {
+              "type": "integer"
+            },
+            "type": "array",
+            "title": "Unmatched Clean Indices"
+          },
+          "unmatched_corrupted_indices": {
+            "items": {
+              "type": "integer"
+            },
+            "type": "array",
+            "title": "Unmatched Corrupted Indices"
+          },
+          "metrics": {
+            "$ref": "#/components/schemas/MetricSet"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "image_id",
+          "predictions",
+          "matches",
+          "unmatched_clean_indices",
+          "unmatched_corrupted_indices",
+          "metrics"
+        ],
+        "title": "ImageConditionResult"
+      },
+      "ImageError": {
+        "properties": {
+          "image_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Image Id"
+          },
+          "stage": {
+            "type": "string",
+            "title": "Stage"
+          },
+          "corruption": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/CorruptionKind"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "severity": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Severity"
+          },
+          "message": {
+            "type": "string",
+            "title": "Message"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "stage",
+          "message"
+        ],
+        "title": "ImageError"
+      },
+      "ImagePredictions": {
+        "properties": {
+          "image_id": {
+            "type": "string",
+            "minLength": 1,
+            "title": "Image Id"
+          },
+          "width": {
+            "type": "integer",
+            "exclusiveMinimum": 0.0,
+            "title": "Width"
+          },
+          "height": {
+            "type": "integer",
+            "exclusiveMinimum": 0.0,
+            "title": "Height"
+          },
+          "image_path": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Image Path"
+          },
+          "predictions": {
+            "items": {
+              "$ref": "#/components/schemas/Prediction"
+            },
+            "type": "array",
+            "title": "Predictions"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "image_id",
+          "width",
+          "height",
+          "predictions"
+        ],
+        "title": "ImagePredictions"
+      },
+      "MatchRecord": {
+        "properties": {
+          "clean_index": {
+            "type": "integer",
+            "minimum": 0.0,
+            "title": "Clean Index"
+          },
+          "corrupted_index": {
+            "type": "integer",
+            "minimum": 0.0,
+            "title": "Corrupted Index"
+          },
+          "iou": {
+            "type": "number",
+            "maximum": 1.0,
+            "minimum": 0.0,
+            "title": "Iou"
+          },
+          "confidence_delta": {
+            "type": "number",
+            "maximum": 1.0,
+            "minimum": -1.0,
+            "title": "Confidence Delta"
+          },
+          "class_flip": {
+            "type": "boolean",
+            "title": "Class Flip"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "clean_index",
+          "corrupted_index",
+          "iou",
+          "confidence_delta",
+          "class_flip"
+        ],
+        "title": "MatchRecord"
+      },
+      "MetricSet": {
+        "properties": {
+          "n_clean": {
+            "type": "integer",
+            "minimum": 0.0,
+            "title": "N Clean"
+          },
+          "n_corrupted": {
+            "type": "integer",
+            "minimum": 0.0,
+            "title": "N Corrupted"
+          },
+          "n_matched": {
+            "type": "integer",
+            "minimum": 0.0,
+            "title": "N Matched"
+          },
+          "n_class_flips": {
+            "type": "integer",
+            "minimum": 0.0,
+            "title": "N Class Flips"
+          },
+          "n_unmatched_clean": {
+            "type": "integer",
+            "minimum": 0.0,
+            "title": "N Unmatched Clean"
+          },
+          "n_unmatched_corrupted": {
+            "type": "integer",
+            "minimum": 0.0,
+            "title": "N Unmatched Corrupted"
+          },
+          "detection_retention": {
+            "anyOf": [
+              {
+                "type": "number",
+                "maximum": 1.0,
+                "minimum": 0.0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Detection Retention"
+          },
+          "class_consistent_retention": {
+            "anyOf": [
+              {
+                "type": "number",
+                "maximum": 1.0,
+                "minimum": 0.0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Class Consistent Retention"
+          },
+          "mean_matched_iou": {
+            "anyOf": [
+              {
+                "type": "number",
+                "maximum": 1.0,
+                "minimum": 0.0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Mean Matched Iou"
+          },
+          "mean_confidence_delta": {
+            "anyOf": [
+              {
+                "type": "number",
+                "maximum": 1.0,
+                "minimum": -1.0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Mean Confidence Delta"
+          },
+          "class_flip_rate": {
+            "anyOf": [
+              {
+                "type": "number",
+                "maximum": 1.0,
+                "minimum": 0.0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Class Flip Rate"
+          },
+          "unavailable": {
+            "additionalProperties": {
+              "type": "string"
+            },
+            "type": "object",
+            "title": "Unavailable"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "n_clean",
+          "n_corrupted",
+          "n_matched",
+          "n_class_flips",
+          "n_unmatched_clean",
+          "n_unmatched_corrupted"
+        ],
+        "title": "MetricSet"
+      },
+      "ModelInfo": {
+        "properties": {
+          "model_id": {
+            "type": "string",
+            "title": "Model Id"
+          },
+          "name": {
+            "type": "string",
+            "title": "Name"
+          },
+          "framework": {
+            "type": "string",
+            "title": "Framework"
+          },
+          "weights": {
+            "type": "string",
+            "title": "Weights"
+          },
+          "weights_license": {
+            "type": "string",
+            "title": "Weights License"
+          },
+          "weights_sha256": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Weights Sha256"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "model_id",
+          "name",
+          "framework",
+          "weights",
+          "weights_license"
+        ],
+        "title": "ModelInfo"
+      },
+      "ModelsResponse": {
+        "properties": {
+          "models": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Models"
+          }
+        },
+        "type": "object",
+        "required": [
+          "models"
+        ],
+        "title": "ModelsResponse"
+      },
+      "Prediction": {
+        "properties": {
+          "class_id": {
+            "type": "integer",
+            "minimum": 0.0,
+            "title": "Class Id"
+          },
+          "class_name": {
+            "type": "string",
+            "minLength": 1,
+            "title": "Class Name"
+          },
+          "confidence": {
+            "type": "number",
+            "maximum": 1.0,
+            "minimum": 0.0,
+            "title": "Confidence"
+          },
+          "bbox_xyxy": {
+            "items": {
+              "type": "number"
+            },
+            "type": "array",
+            "maxItems": 4,
+            "minItems": 4,
+            "title": "Bbox Xyxy"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "class_id",
+          "class_name",
+          "confidence",
+          "bbox_xyxy"
+        ],
+        "title": "Prediction"
+      },
+      "ReportResponse": {
+        "properties": {
+          "run_id": {
+            "type": "string",
+            "title": "Run Id"
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Created At"
+          },
+          "report": {
+            "$ref": "#/components/schemas/EvaluationReport"
+          }
+        },
+        "type": "object",
+        "required": [
+          "run_id",
+          "created_at",
+          "report"
+        ],
+        "title": "ReportResponse"
+      },
+      "RunArtifactsResponse": {
+        "properties": {
+          "run_id": {
+            "type": "string",
+            "title": "Run Id"
+          },
+          "artifacts": {
+            "items": {
+              "$ref": "#/components/schemas/ArtifactItem"
+            },
+            "type": "array",
+            "title": "Artifacts"
+          },
+          "total": {
+            "type": "integer",
+            "title": "Total"
+          }
+        },
+        "type": "object",
+        "required": [
+          "run_id",
+          "artifacts",
+          "total"
+        ],
+        "title": "RunArtifactsResponse"
+      },
+      "RunCreateRequest": {
+        "properties": {
+          "model_id": {
+            "type": "string",
+            "minLength": 1,
+            "title": "Model Id"
+          },
+          "dataset_id": {
+            "type": "string",
+            "minLength": 1,
+            "title": "Dataset Id"
+          },
+          "corruptions": {
+            "items": {
+              "$ref": "#/components/schemas/CorruptionSpec"
+            },
+            "type": "array",
+            "minItems": 1,
+            "title": "Corruptions"
+          },
+          "seed": {
+            "type": "integer",
+            "title": "Seed",
+            "default": 0
+          },
+          "score_threshold": {
+            "type": "number",
+            "maximum": 1.0,
+            "minimum": 0.0,
+            "title": "Score Threshold",
+            "default": 0.5
+          },
+          "match_iou_threshold": {
+            "type": "number",
+            "maximum": 1.0,
+            "exclusiveMinimum": 0.0,
+            "title": "Match Iou Threshold",
+            "default": 0.5
+          },
+          "max_images": {
+            "anyOf": [
+              {
+                "type": "integer",
+                "minimum": 1.0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Max Images"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "model_id",
+          "dataset_id",
+          "corruptions"
+        ],
+        "title": "RunCreateRequest"
+      },
+      "RunListResponse": {
+        "properties": {
+          "runs": {
+            "items": {
+              "$ref": "#/components/schemas/RunResponse"
+            },
+            "type": "array",
+            "title": "Runs"
+          },
+          "total": {
+            "type": "integer",
+            "title": "Total"
+          },
+          "limit": {
+            "type": "integer",
+            "title": "Limit"
+          },
+          "offset": {
+            "type": "integer",
+            "title": "Offset"
+          }
+        },
+        "type": "object",
+        "required": [
+          "runs",
+          "total",
+          "limit",
+          "offset"
+        ],
+        "title": "RunListResponse"
+      },
+      "RunResponse": {
+        "properties": {
+          "run_id": {
+            "type": "string",
+            "title": "Run Id"
+          },
+          "status": {
+            "$ref": "#/components/schemas/RunStatus"
+          },
+          "model_id": {
+            "type": "string",
+            "title": "Model Id"
+          },
+          "dataset_id": {
+            "type": "string",
+            "title": "Dataset Id"
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Created At"
+          },
+          "started_at": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Started At"
+          },
+          "finished_at": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Finished At"
+          },
+          "error_message": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Error Message"
+          }
+        },
+        "type": "object",
+        "required": [
+          "run_id",
+          "status",
+          "model_id",
+          "dataset_id",
+          "created_at"
+        ],
+        "title": "RunResponse"
+      },
+      "RunStatus": {
+        "type": "string",
+        "enum": [
+          "QUEUED",
+          "RUNNING",
+          "COMPLETED",
+          "PARTIAL",
+          "FAILED"
+        ],
+        "title": "RunStatus"
+      },
+      "ValidationError": {
+        "properties": {
+          "loc": {
+            "items": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "integer"
+                }
+              ]
+            },
+            "type": "array",
+            "title": "Location"
+          },
+          "msg": {
+            "type": "string",
+            "title": "Message"
+          },
+          "type": {
+            "type": "string",
+            "title": "Error Type"
+          },
+          "input": {
+            "title": "Input"
+          },
+          "ctx": {
+            "type": "object",
+            "title": "Context"
+          }
+        },
+        "type": "object",
+        "required": [
+          "loc",
+          "msg",
+          "type"
+        ],
+        "title": "ValidationError"
+      }
+    }
+  }
+}

@@ -25,8 +25,25 @@ def run_migrations_offline() -> None:
 
 
 def run_migrations_online() -> None:
+    connectable = context.config.attributes.get("connection", None)
+    if connectable is not None:
+        context.configure(
+            connection=connectable,
+            target_metadata=target_metadata,
+            compare_type=True,
+            transactional_ddl=True,
+        )
+        with context.begin_transaction():
+            context.run_migrations()
+        return
+
+    import os
+    override_url = os.getenv("ALEMBIC_DATABASE_URL") or os.getenv("TEST_DATABASE_URL")
     try:
-        database = RunDatabase.from_environment()
+        if override_url:
+            database = RunDatabase(override_url)
+        else:
+            database = RunDatabase.from_environment()
     except DatabaseConfigurationError as error:
         raise SystemExit(str(error)) from None
     try:
@@ -35,7 +52,7 @@ def run_migrations_online() -> None:
         except SQLAlchemyError:
             raise SystemExit(
                 "Could not connect to the configured database for migration; "
-                "verify DATABASE_URL and Neon connectivity."
+                "verify DATABASE_URL / TEST_DATABASE_URL and connectivity."
             ) from None
         try:
             context.configure(

@@ -136,6 +136,43 @@ def auto_register_default_datasets() -> None:
 auto_register_default_datasets()
 
 
+def get_registered_datasets() -> list[dict[str, Any]]:
+    """Return metadata for all currently registered datasets."""
+    auto_register_default_datasets()
+    result: list[dict[str, Any]] = []
+    for d_id in sorted(_DATASET_ROOTS):
+        root = _DATASET_ROOTS[d_id]
+        if root.is_dir():
+            image_paths = sorted(
+                p for p in root.rglob("*") if p.suffix.lower() in _IMAGE_EXTENSIONS
+            )
+            count = len(image_paths)
+            supported = count > 0
+        else:
+            count = 0
+            supported = False
+
+        name = d_id.replace("_", " ").title()
+        if d_id == DEFAULT_DEMO_DATASET_ID:
+            name = "VisionGuard Demo Dataset"
+            desc = "Bundled benchmark demo dataset with diverse outdoor and indoor scenes"
+        else:
+            desc = f"Registered dataset at {root.as_posix()}"
+
+        result.append(
+            {
+                "id": d_id,
+                "name": name,
+                "description": desc,
+                "image_count": count,
+                "has_ground_truth": False,
+                "supported": supported,
+            }
+        )
+    return result
+
+
+
 # --------------------------------------------------------------------------- #
 # Model registry                                                                #
 # --------------------------------------------------------------------------- #

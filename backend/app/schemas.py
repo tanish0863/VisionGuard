@@ -35,3 +35,35 @@ class ReportResponse(BaseModel):
     run_id: str
     created_at: datetime
     report: EvaluationReport
+
+
+class DatasetMetadata(BaseModel):
+    id: str
+    name: str
+    description: str
+    image_count: int
+    has_ground_truth: bool = False
+    supported: bool = True
+
+
+class DatasetsResponse(BaseModel):
+    datasets: list[DatasetMetadata]
+
+
+class ArtifactItem(BaseModel):
+    artifact_id: str
+    run_id: str
+    image_id: str
+    artifact_type: str
+    corruption: str | None = None
+    severity: int | None = None
+    mime_type: str = "image/jpeg"
+    available: bool = True
+    details: str | None = None
+
+
+class RunArtifactsResponse(BaseModel):
+    run_id: str
+    artifacts: list[ArtifactItem]
+    total: int
+

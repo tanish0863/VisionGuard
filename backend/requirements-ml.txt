@@ -1,0 +1,35 @@
+# =============================================================================
+# VisionGuard — ML Evaluation Engine Dependencies
+# =============================================================================
+#
+# Core numerical, image processing, and matching libraries:
+numpy>=1.24.0,<3.0.0
+Pillow>=10.0.0,<14.0.0
+opencv-python-headless>=4.8.0,<6.0.0
+scipy>=1.11.0,<2.0.0
+pydantic>=2.5.0,<3.0.0
+
+# -----------------------------------------------------------------------------
+# PyTorch & Torchvision Specification
+# -----------------------------------------------------------------------------
+# PyTorch and Torchvision must match compatible minor versions.
+#
+# Known verified working combination:
+#   Python: 3.12.x
+#   PyTorch: 2.6.0
+#   Torchvision: 0.21.0
+#
+# Installation Instructions by Platform:
+#
+# 1. Local / Cloud GPU (CUDA 12.4):
+#    pip install torch==2.6.0+cu124 torchvision==0.21.0+cu124 --extra-index-url https://download.pytorch.org/whl/cu124
+#
+# 2. Cloud GPU (CUDA 12.1):
+#    pip install torch==2.6.0+cu121 torchvision==0.21.0+cu121 --extra-index-url https://download.pytorch.org/whl/cu121
+#
+# 3. CPU-Only (CI / Testing / Non-GPU Environment):
+#    pip install torch==2.6.0 torchvision==0.21.0 --extra-index-url https://download.pytorch.org/whl/cpu
+#
+# Base package specifications (resolves to default PyPI wheel unless index-url specified):
+torch==2.6.0
+torchvision==0.21.0

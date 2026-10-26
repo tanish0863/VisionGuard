@@ -13,11 +13,13 @@ from sqlalchemy import (
     DateTime,
     ForeignKey,
     Index,
+    Integer,
     MetaData,
     String,
     Table,
     URL,
     create_engine,
+    func,
     make_url,
     select,
     text,
@@ -52,6 +54,9 @@ runs = Table(
     Column("started_at", DateTime(timezone=True)),
     Column("finished_at", DateTime(timezone=True)),
     Column("error_message", String),
+    Column("worker_id", String(64), nullable=True),
+    Column("heartbeat_at", DateTime(timezone=True), nullable=True),
+    Column("attempt_count", Integer, nullable=False, server_default="0", default=0),
     CheckConstraint(
         "status IN ('QUEUED', 'RUNNING', 'COMPLETED', 'PARTIAL', 'FAILED')",
         name="ck_runs_status",
@@ -59,6 +64,7 @@ runs = Table(
 )
 Index("ix_runs_created_at", runs.c.created_at)
 Index("ix_runs_status_created_at", runs.c.status, runs.c.created_at)
+Index("ix_runs_status_heartbeat", runs.c.status, runs.c.heartbeat_at)
 
 reports = Table(
     "reports",
@@ -104,7 +110,7 @@ def database_url_from_environment(
             load_dotenv(dotenv_path=dotenv_path)
         environment = os.environ
 
-    raw_url = environment.get("DATABASE_URL", "").strip()
+    raw_url = environment.get("TEST_DATABASE_URL", "").strip() or environment.get("DATABASE_URL", "").strip()
     if not raw_url:
         raise DatabaseConfigurationError(
             "DATABASE_URL is required. Configure it in the environment or local .env file."
@@ -119,6 +125,8 @@ def database_url_from_environment(
 
     if url.get_backend_name() == "postgresql":
         url = _require_postgres_tls(url)
+    elif "TEST_DATABASE_URL" in environment or url.get_backend_name() == "sqlite":
+        pass
     else:
         raise DatabaseConfigurationError(
             "DATABASE_URL must use PostgreSQL. SQLite is reserved for isolated tests."
@@ -156,6 +164,8 @@ class RunDatabase:
 
         try:
             self.engine: Engine = create_engine(url, **engine_options)
+            if url.get_backend_name() == "sqlite":
+                metadata.create_all(self.engine)
         except (SQLAlchemyError, TypeError, ValueError) as error:
             raise DatabaseConfigurationError(
                 "Could not initialize the configured database driver."
@@ -242,19 +252,143 @@ class RunDatabase:
             ).mappings().all()
         return [dict(row) for row in rows], total
 
-    def start_run(self, run_id: str, started_at: Any) -> None:
+    def start_run(self, run_id: str, started_at: Any, worker_id: str | None = None) -> int:
+        values: dict[str, Any] = {
+            "status": "RUNNING",
+            "started_at": started_at,
+            "updated_at": started_at,
+            "heartbeat_at": started_at,
+            "attempt_count": runs.c.attempt_count + 1,
+        }
+        if worker_id is not None:
+            values["worker_id"] = worker_id
         with self.connection() as connection:
+            result = connection.execute(
+                update(runs)
+                .where(runs.c.run_id == run_id, runs.c.status == "QUEUED")
+                .values(**values)
+            )
+            if result.rowcount != 1:
+                raise ValueError(f"Run '{run_id}' is not queued")
+            row = connection.execute(
+                select(runs.c.attempt_count).where(runs.c.run_id == run_id)
+            ).first()
+            return int(row[0]) if row and row[0] is not None else 1
+
+    def heartbeat_run(
+        self,
+        run_id: str,
+        heartbeat_at: Any,
+        worker_id: str | None = None,
+        attempt_count: int | None = None,
+    ) -> bool:
+        values: dict[str, Any] = {
+            "heartbeat_at": heartbeat_at,
+            "updated_at": heartbeat_at,
+        }
+        with self.connection() as connection:
+            stmt = update(runs).where(runs.c.run_id == run_id, runs.c.status == "RUNNING")
+            if worker_id is not None:
+                stmt = stmt.where(runs.c.worker_id == worker_id)
+            if attempt_count is not None:
+                stmt = stmt.where(runs.c.attempt_count == attempt_count)
+            result = connection.execute(stmt.values(**values))
+            return result.rowcount == 1
+
+    def claim_next_queued_run(self, worker_id: str, claimed_at: Any) -> dict[str, Any] | None:
+        """Atomically find and claim the earliest QUEUED run for this worker."""
+        with self.connection() as connection:
+            select_stmt = (
+                select(runs.c.run_id)
+                .where(runs.c.status == "QUEUED")
+                .order_by(runs.c.created_at.asc())
+                .limit(1)
+            )
+            if connection.dialect.name == "postgresql":
+                select_stmt = select_stmt.with_for_update(skip_locked=True)
+
+            row = connection.execute(select_stmt).first()
+            if not row:
+                return None
+            run_id = row[0]
+
             result = connection.execute(
                 update(runs)
                 .where(runs.c.run_id == run_id, runs.c.status == "QUEUED")
                 .values(
                     status="RUNNING",
-                    started_at=started_at,
-                    updated_at=started_at,
+                    started_at=claimed_at,
+                    updated_at=claimed_at,
+                    heartbeat_at=claimed_at,
+                    worker_id=worker_id,
+                    attempt_count=runs.c.attempt_count + 1,
                 )
             )
-            if result.rowcount != 1:
-                raise ValueError(f"Run '{run_id}' is not queued")
+            if result.rowcount == 1:
+                claimed_row = connection.execute(
+                    select(runs).where(runs.c.run_id == run_id)
+                ).mappings().first()
+                if claimed_row:
+                    res = dict(claimed_row)
+                    res["config"] = res.pop("config_json")
+                    return res
+            return None
+
+    def recover_stale_runs(
+        self,
+        now: Any,
+        lease_timeout_seconds: float = 60.0,
+        max_attempts: int = 3,
+    ) -> dict[str, int]:
+        """Recover stale RUNNING jobs whose heartbeat has expired without requiring an API restart."""
+        from datetime import timedelta
+        cutoff = now - timedelta(seconds=lease_timeout_seconds)
+
+        recovered_count = 0
+        failed_count = 0
+
+        with self.connection() as connection:
+            effective_active = func.coalesce(runs.c.heartbeat_at, runs.c.started_at)
+            stale_runs = connection.execute(
+                select(runs.c.run_id, runs.c.attempt_count)
+                .where(
+                    runs.c.status == "RUNNING",
+                    effective_active < cutoff,
+                )
+            ).mappings().all()
+
+            for row in stale_runs:
+                attempts = row["attempt_count"] or 1
+                r_id = row["run_id"]
+                if attempts < max_attempts:
+                    res = connection.execute(
+                        update(runs)
+                        .where(runs.c.run_id == r_id, runs.c.status == "RUNNING")
+                        .values(
+                            status="QUEUED",
+                            worker_id=None,
+                            heartbeat_at=None,
+                            updated_at=now,
+                            error_message=f"Lease expired (attempt {attempts}/{max_attempts}); requeued for execution",
+                        )
+                    )
+                    if res.rowcount == 1:
+                        recovered_count += 1
+                else:
+                    res = connection.execute(
+                        update(runs)
+                        .where(runs.c.run_id == r_id, runs.c.status == "RUNNING")
+                        .values(
+                            status="FAILED",
+                            finished_at=now,
+                            updated_at=now,
+                            error_message=f"Evaluation failed: worker lease expired after {max_attempts} attempts",
+                        )
+                    )
+                    if res.rowcount == 1:
+                        failed_count += 1
+
+        return {"recovered": recovered_count, "failed": failed_count}
 
     def complete_run(
         self,
@@ -264,14 +398,19 @@ class RunDatabase:
         finished_at: Any,
         error_message: str | None = None,
         report_id: str | None = None,
+        worker_id: str | None = None,
+        attempt_count: int | None = None,
     ) -> None:
         if status not in TERMINAL_STATUSES:
             raise ValueError(f"Invalid terminal run status: {status}")
         with self.connection() as connection:
+            stmt = update(runs).where(runs.c.run_id == run_id, runs.c.status == "RUNNING")
+            if worker_id is not None:
+                stmt = stmt.where(runs.c.worker_id == worker_id)
+            if attempt_count is not None:
+                stmt = stmt.where(runs.c.attempt_count == attempt_count)
             result = connection.execute(
-                update(runs)
-                .where(runs.c.run_id == run_id, runs.c.status == "RUNNING")
-                .values(
+                stmt.values(
                     status=status,
                     finished_at=finished_at,
                     updated_at=finished_at,
@@ -279,7 +418,9 @@ class RunDatabase:
                 )
             )
             if result.rowcount != 1:
-                raise ValueError(f"Run '{run_id}' is not running")
+                raise ValueError(
+                    f"Run '{run_id}' cannot be completed by worker '{worker_id}' (attempt {attempt_count}): not running or lease reclaimed"
+                )
             connection.execute(
                 reports.insert().values(
                     report_id=report_id or str(uuid4()),
@@ -289,15 +430,25 @@ class RunDatabase:
                 )
             )
 
-    def fail_run(self, run_id: str, message: str, finished_at: Any) -> None:
+    def fail_run(
+        self,
+        run_id: str,
+        message: str,
+        finished_at: Any,
+        worker_id: str | None = None,
+        attempt_count: int | None = None,
+    ) -> None:
         with self.connection() as connection:
+            stmt = update(runs).where(
+                runs.c.run_id == run_id,
+                runs.c.status.in_(("QUEUED", "RUNNING")),
+            )
+            if worker_id is not None:
+                stmt = stmt.where(runs.c.worker_id == worker_id)
+            if attempt_count is not None:
+                stmt = stmt.where(runs.c.attempt_count == attempt_count)
             result = connection.execute(
-                update(runs)
-                .where(
-                    runs.c.run_id == run_id,
-                    runs.c.status.in_(("QUEUED", "RUNNING")),
-                )
-                .values(
+                stmt.values(
                     status="FAILED",
                     finished_at=finished_at,
                     updated_at=finished_at,
@@ -305,7 +456,69 @@ class RunDatabase:
                 )
             )
             if result.rowcount != 1:
-                raise ValueError(f"Run '{run_id}' is not active")
+                raise ValueError(
+                    f"Run '{run_id}' cannot be failed by worker '{worker_id}' (attempt {attempt_count}): not active or lease reclaimed"
+                )
+
+    def persist_report(
+        self,
+        run_id: str,
+        report: dict[str, Any],
+        created_at: Any,
+        report_id: str | None = None,
+        worker_id: str | None = None,
+        attempt_count: int | None = None,
+    ) -> str:
+        with self.connection() as connection:
+            if worker_id is not None or attempt_count is not None:
+                stmt = select(runs.c.run_id).where(
+                    runs.c.run_id == run_id,
+                    runs.c.status == "RUNNING",
+                )
+                if worker_id is not None:
+                    stmt = stmt.where(runs.c.worker_id == worker_id)
+                if attempt_count is not None:
+                    stmt = stmt.where(runs.c.attempt_count == attempt_count)
+                row = connection.execute(stmt).first()
+                if not row:
+                    raise ValueError(
+                        f"Run '{run_id}' report persistence rejected: invalid worker lease or attempt generation"
+                    )
+            rid = report_id or str(uuid4())
+            connection.execute(
+                reports.insert().values(
+                    report_id=rid,
+                    run_id=run_id,
+                    report_json=report,
+                    created_at=created_at,
+                )
+            )
+            return rid
+
+    def update_run_status(
+        self,
+        run_id: str,
+        status: str,
+        updated_at: Any,
+        worker_id: str | None = None,
+        attempt_count: int | None = None,
+    ) -> None:
+        if status not in RUN_STATUSES:
+            raise ValueError(f"Invalid run status: {status}")
+        with self.connection() as connection:
+            stmt = update(runs).where(runs.c.run_id == run_id)
+            if worker_id is not None:
+                stmt = stmt.where(runs.c.worker_id == worker_id)
+            if attempt_count is not None:
+                stmt = stmt.where(runs.c.attempt_count == attempt_count)
+            values: dict[str, Any] = {"status": status, "updated_at": updated_at}
+            if status in TERMINAL_STATUSES:
+                values["finished_at"] = updated_at
+            result = connection.execute(stmt.values(**values))
+            if result.rowcount != 1:
+                raise ValueError(
+                    f"Run '{run_id}' status update rejected: not found or ownership mismatch"
+                )
 
     def get_report(self, run_id: str) -> dict[str, Any] | None:
         with self.connection() as connection:
@@ -318,4 +531,5 @@ class RunDatabase:
             "run_id": row["run_id"],
             "created_at": row["created_at"],
             "report": row["report_json"],
+            "report_json": row["report_json"],
         }
